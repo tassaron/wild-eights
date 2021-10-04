@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    </meta>
+    <title>Canvas Game Template</title>
+    <link rel="stylesheet" href="{{ url_for("static", filename="style.css") }}">
+    <link rel="icon" href="{{ url_for("static", filename="assets/favicon.ico") }}">
+</head>
+
+<body>
+    <div id="pause_button">&#9612;&#9612; PAUSE GAME</div>
+    <div id="main_content">
+        <script type="module" src="{{ url_for("static", filename="main.js")}}"></script>
+        <h1>Canvas Game Template</h1>
+        <div id="help_text">Boilerplate for a simple HTML5 canvas game</div>
+        <div id="game"></div>
+        <p>
+        <small>
+            made by <a href="https://tassaron.com">tassaron<img src="{{ url_for("static", filename="assets/minimuffin.ico") }}"
+                    alt="tassaron muffin-with-crown icon"></a>
+            <br>
+            <a href="https://github.com/tassaron/2p-canvas-game">source code on github</a>
+        </small>
+        </p>
+    </div>
+</body>
+
+</html>
