@@ -1,24 +1,29 @@
-import { Button } from "../button.js";
-import { AnimatedThing } from "../thing.js";
+import { Thing } from "../thing.js";
+import { Card, Cardback } from "../card.js";
 
 const SERVER = "";
 
 export class WorldScene {
-    constructor(game, rid, odd_turns, uid) {
-        this.turnButton = new EndTurnButton(game, game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
-        this.explosion = new Boom(300, 100);
+    constructor(game, rid, odd_turns, uid, cards, pile) {
+        this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
         this.rid = rid;
         this.turn = 1;
-        this.loading = false;
-        if (!this.odd_turns) {this.turnButton.text = "..."}
+        this.cards = cards;
+        this.cardThings = this.cards.map(card => new Card(card[0], card[1], 0, 0));
+        this.pile = [pile, new Card(pile[0], pile[1], 405, 305)];
+        this.underpile = [];
+        this.adjustCardPos();
+        if (!this.odd_turns) {this.turnDisplay.text = "waiting for the other player...";}
     }
 
     update(ratio, keyboard, mouse) {
-        this.explosion.update(ratio, keyboard, mouse);
         if (this.isMyTurn()) {
-            this.turnButton.update(ratio, keyboard, mouse, this.endTurn, this);
+            //this.turnDisplay.update(ratio, keyboard, mouse, this.endTurn, this);
+            for (let card of this.cardThings) {
+                card.update(ratio, keyboard, mouse, function(self) { self.playCard(self, card) }, this);
+            }
         } else if (this.game.timer[0] == 0.0) {
             this.game.setTimer(600.0, this.syncWithServer, this);
         }
@@ -26,8 +31,26 @@ export class WorldScene {
 
     draw(ctx, drawSprite) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        this.explosion.draw(ctx, drawSprite);
-        this.turnButton.draw(ctx, drawSprite);
+        this.turnDisplay.draw(ctx, drawSprite);
+        for (let card of this.cardThings) {
+            card.draw(ctx, drawSprite);
+        }
+        for (let card of this.underpile) {
+            card.draw(ctx, drawSprite);
+        }
+        this.pile[1].draw(ctx, drawSprite);
+    }
+
+    playCard(self, card) {
+        console.log(self);
+        console.log(card)
+    }
+
+    adjustCardPos() {
+        for (let i=0; i < this.cardThings.length; i++) {
+            this.cardThings[i].x = 90 + (90*i);
+            this.cardThings[i].y = (900 - 405) + (135 * Math.floor(i / 9));
+        }
     }
 
     isMyTurn() {
@@ -35,7 +58,6 @@ export class WorldScene {
     }
 
     endTurn(self) {
-        self.turnButton.text = "...";
         fetch(
             `${SERVER}/update`, {
 			    method: "POST",
@@ -83,7 +105,7 @@ export class WorldScene {
                 if (data === null) {return}
                 self.turn = data["turn"];
                 if (self.isMyTurn()) {
-                    self.turnButton.text = "End Turn";
+                    self.turnDisplay.text = "It's your turn!";
                     self.explosion.x = data["gamestate"]["explosion"];
                 }
             }
@@ -91,25 +113,20 @@ export class WorldScene {
     }
 }
 
-class Boom extends AnimatedThing {
+class TurnDisplay extends Thing {
     constructor(x, y) {
-        super(x, y, 32, 32, 'explosion', 6, 4);
+        super(x, y, 0, 0);
+        this.text = "You play first!";
     }
 
-    update(ratio, keyboard, mouse) {
-        super.update(ratio, keyboard, mouse);
-        if (mouse.leftClick && this.collides(mouse)) {
-            this.x += 10;
-        }
-    }
-}
-
-
-class EndTurnButton extends Button {
-    constructor(game, x, y) {
-        let outline = "rgba(0, 0, 0, 1.0)";
-        let colour = "rgba(0, 88, 88, 1.0)";
-        super(x, y, 100, 100, "End Turn", outline, colour);
-        this.game = game;
+    draw(ctx, drawSprite) {
+        let width = ctx.measureText(this.text).width;
+        ctx.fillStyle = "black";
+        ctx.fillRect((this.x - width) - 8, this.y - 24, width + 16, 32);
+        ctx.fillStyle = "white";
+        ctx.fillRect((this.x - width) - 6, this.y - 22, width + 12, 28);
+        ctx.fillStyle = "black";
+        ctx.font = "16pt Sans";
+        ctx.fillText(this.text, this.x - width, this.y);
     }
 }

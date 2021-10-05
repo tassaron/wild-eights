@@ -10,7 +10,7 @@ body {
 
 #game {
     width: 900px;
-    height: 1000px;
+    height: 900px;
     position: relative;
     display: inline-block;
     border: 2px solid black;

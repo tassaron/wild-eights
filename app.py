@@ -1,6 +1,3 @@
-"""
-
-"""
 import flask
 import os
 import random
@@ -33,6 +30,35 @@ class GameRoom:
         self.turn = 0
         self.gamestate = {}
 
+    def createDeck(self):
+        self.deck = []
+        cards = list(range(52))
+        for _ in range(52):
+            ch = random.choice(cards)
+            self.deck.append(ch)
+            cards.remove(ch)
+        for i, card in enumerate(self.deck[:]):
+            if (card > 13 and card < 27):
+                card -= 13
+                self.deck[i] = (1, card)
+            elif (card > 26 and card < 40):
+                card -= 26
+                self.deck[i] = (2, card)
+            elif (card > 39):
+                card -= 39
+                self.deck[i] = (3, card)
+            else:
+                self.deck[i] = (0, card)
+
+    def takeCards(self, num):
+        returnval = []
+        for _ in range(num):
+            ch = random.choice(self.deck)
+            returnval.append(ch)
+            self.deck.remove(ch)
+        return returnval
+
+
 
 def is_valid(gamestate):
     return True
@@ -50,7 +76,14 @@ def refreshlobby():
         room = rooms[data["rid"]]
         if data["uid"] != str(room.uid1):
             flask.abort(401)
-        return { "uid": room.uid2 }
+        if room.uid2 is None:
+            return { "uid": None }, 200
+        else:
+            return {
+                "uid": room.uid2,
+                "cards": room.takeCards(8),
+                "pile": room.pile
+            }, 200
     except KeyError:
         flask.abort(400)
 
@@ -82,7 +115,7 @@ def newroom():
         {
             "rid": new_room.rid,
             "uid1": new_room.uid1,
-            "uid2": new_room.uid2,
+            "uid2": None,
         },
         200,
     )
@@ -100,11 +133,16 @@ def joinroom():
     if data not in rooms.keys():
         flask.abort(404)
     rooms[data].uid2 = uuid4()
+    rooms[data].createDeck()
+    cards = rooms[data].takeCards(9)
+    rooms[data].pile = cards.pop()
     response = flask.make_response(
         {
             "rid": rooms[data].rid,
             "uid1": rooms[data].uid1,
             "uid2": rooms[data].uid2,
+            "cards": cards,
+            "pile": rooms[data].pile,
         },
         200,
     )

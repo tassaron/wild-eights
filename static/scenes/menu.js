@@ -21,6 +21,10 @@ export class MenuScene {
 
     draw(ctx, drawSprite) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = "black";
+        ctx.font = "36pt sans";
+        let text = "Wild Eights";
+        ctx.fillText(text, this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2), this.newbutton.y - 28);
         this.newbutton.draw(ctx, drawSprite);
         this.joinbutton.draw(ctx, drawSprite);
     }
@@ -88,7 +92,7 @@ export class MenuScene {
 class NewGameButton extends Button {
     constructor(game, x, y) {
         let outline = "rgba(0, 0, 0, 1.0)";
-        let colour = "rgba(0, 55, 145, 1.0)";
+        let colour = "rgba(55, 145, 95, 1.0)";
         super(x, y, 256, 48, "New Game", outline, colour);
         this.game = game;
     }
@@ -97,7 +101,7 @@ class NewGameButton extends Button {
 class JoinGameButton extends Button {
     constructor(game, x, y) {
         let outline = "rgba(0, 0, 0, 1.0)";
-        let colour = "rgba(0, 55, 145, 1.0)";
+        let colour = "rgba(55, 95, 145, 1.0)";
         super(x, y, 256, 48, "Join Game", outline, colour);
         this.game = game;
     }

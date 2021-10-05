@@ -9,6 +9,8 @@ export class LobbyScene {
         this.rid = data["rid"];
         this.uid1 = data["uid1"];
         this.uid2 = data["uid2"];
+        this.cards = data["cards"];
+        this.pile = data["pile"];
         // odd turns determines who plays on turns 1, 3, 5, etc.
         // uid2 will be the first to enter WorldScene so they go first
         this.odd_turns = data["uid2"] === null ? false : true;
@@ -16,7 +18,7 @@ export class LobbyScene {
 
     update(ratio, keyboard, mouse) {
         if (this.uid2) {
-            this.game.changeScene(new WorldScene(this.game, this.rid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1))
+            this.game.changeScene(new WorldScene(this.game, this.rid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile));
         } else if (this.game.timer[0] == 0.0) {
             this.game.setTimer(900.0, this.syncWithServer, this);
         }
@@ -58,7 +60,7 @@ export class LobbyScene {
             data => {
                 if (data === null || data["uid"] === null) {return}
                 // uid2 has connected!!
-                self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1))
+                self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1, data["cards"], data["pile"]));
             }
         )
     }
