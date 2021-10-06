@@ -17,6 +17,9 @@ export class MenuScene {
     update(ratio, keyboard, mouse) {
         this.newbutton.update(ratio, keyboard, mouse, this.requestNewRoom, this);
         this.joinbutton.update(ratio, keyboard, mouse, this.inputbox ? this.submitJoinRequest : this.requestJoinRoom, this);
+        if (keyboard.enter && this.inputbox !== null) {
+            this.submitJoinRequest(this);
+        }
     }
 
     draw(ctx, drawSprite) {

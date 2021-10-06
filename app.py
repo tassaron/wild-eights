@@ -28,7 +28,6 @@ class GameRoom:
         self.uid1 = uuid4()
         self.uid2 = None
         self.turn = 0
-        self.gamestate = {}
 
     def createDeck(self):
         self.deck = []
@@ -95,7 +94,7 @@ def refreshgame():
     return {
         "rid": room.rid,
         "turn": room.turn,
-        "gamestate": room.gamestate,
+        "pile": room.pile,
     }, 200
 
 
@@ -103,7 +102,7 @@ def refreshgame():
 def updategame():
     data = flask.request.get_json()
     room = rooms[data["rid"]]
-    room.gamestate = data["gamestate"]
+    room.pile = data["pile"]
     room.turn += 1
     return {}, 200
 
@@ -135,7 +134,7 @@ def joinroom():
     rooms[data].uid2 = uuid4()
     rooms[data].createDeck()
     cards = rooms[data].takeCards(9)
-    rooms[data].pile = cards.pop()
+    rooms[data].pile = flask.json.dumps([cards.pop()])
     response = flask.make_response(
         {
             "rid": rooms[data].rid,

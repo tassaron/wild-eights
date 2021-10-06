@@ -4,7 +4,7 @@ export let keyboard = {
     "left": false,
     "right": false,
     "number": -1,
-    "p": false
+    "enter": false
 };
 
 export let mouse = {
@@ -98,8 +98,8 @@ function keyDownHandler(e) {
     } else if (e.keyCode == 40) {
         keyboard.down = true;
         e.preventDefault();
-    } else if (e.keyCode == 80) {
-        keyboard.p = true;
+    } else if (e.keyCode == 13) {
+        keyboard.enter = true;
     } else if (e.keyCode > 47 && e.keyCode < 58) {
         keyboard.number = e.keyCode - 48;
     }
@@ -114,8 +114,8 @@ function keyUpHandler(e) {
         keyboard.up = false;
     } else if (e.keyCode == 40) {
         keyboard.down = false;
-    } else if (e.keyCode == 80) {
-        keyboard.p = false;
+    } else if (e.keyCode == 13) {
+        keyboard.enter = false;
     } else if (e.keyCode > 47 && e.keyCode < 58) {
         keyboard.number = -1;
     }

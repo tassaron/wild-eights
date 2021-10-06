@@ -1,5 +1,4 @@
 import { MenuScene } from "./scenes/menu.js";
-import { PauseScene } from "./scenes/pause.js";
 import { GameOverScene } from "./scenes/gameover.js";
 
 const fpsRatio = ms => { return Math.min(ms / (1000 / 60), 2) }
@@ -7,7 +6,6 @@ let then;
 
 export class Game {
     constructor(ctx) {
-        this.paused = false;
         this.game_over = false;
         then = Date.now();
         this.ctx = ctx;
@@ -34,13 +32,6 @@ export class Game {
         }
         this.scene.update(ratio, keyboard, mouse);
         then = Date.now();
-        /*if (!this.game_over && keyboard.p) {this.paused = !this.paused}
-        if (this.paused && this.scene.isPausedScene !== true) {
-            this.changeScene(new PauseScene(this, this.ctx));
-        } else if (!this.paused && this.scene.isPausedScene) {
-            let scene = this.prevScene;
-            this.changeScene(scene);
-        }*/
     }
 
     draw(ctx, drawSprite) {
@@ -58,7 +49,6 @@ export class Game {
         this.prevScene = prevScene;
         this.allowUserInput = false;
         this.timer = [10.0, function(self) {self.allowUserInput=true}, this];
-        scene.isPausedScene = this.paused;
         this.scene = scene;
     }
 

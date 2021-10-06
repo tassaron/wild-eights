@@ -1,3 +1,4 @@
+/* Primary game scene in which the game actually occurs!! */
 import { Thing } from "../thing.js";
 import { Card, Cardback } from "../card.js";
 
@@ -10,19 +11,28 @@ export class WorldScene {
         this.uid = uid;
         this.rid = rid;
         this.turn = 1;
-        this.cards = cards;
-        this.cardThings = this.cards.map(card => new Card(card[0], card[1], 0, 0));
-        this.pile = [pile, new Card(pile[0], pile[1], 405, 305)];
+        this.cards = cards.map(card => new Card(card[0], card[1], 0, 0));
+        pile = JSON.parse(pile);
+        this.pile = [];
+        for (let arr of pile) {
+            this.pile.push(new Card(arr[0], arr[1], 405, 305));
+        }
         this.underpile = [];
-        this.adjustCardPos();
-        if (!this.odd_turns) {this.turnDisplay.text = "waiting for the other player...";}
+        this.adjustCardPos(this);
+        if (!this.odd_turns) {
+            if (this.pile.length > 1) {
+                this.turnDisplay.text = "It's your turn already!";
+                this.turn = 2;
+            } else {
+                this.turnDisplay.text = "waiting for the other player...";
+            }
+        }
     }
 
     update(ratio, keyboard, mouse) {
         if (this.isMyTurn()) {
-            //this.turnDisplay.update(ratio, keyboard, mouse, this.endTurn, this);
-            for (let card of this.cardThings) {
-                card.update(ratio, keyboard, mouse, function(self) { self.playCard(self, card) }, this);
+            for (let i=0; i < this.cards.length; i++) {
+                this.cards[i].update(ratio, keyboard, mouse, function(self) { self.playCard(self, self.cards[i]) }, this);
             }
         } else if (this.game.timer[0] == 0.0) {
             this.game.setTimer(600.0, this.syncWithServer, this);
@@ -32,24 +42,46 @@ export class WorldScene {
     draw(ctx, drawSprite) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         this.turnDisplay.draw(ctx, drawSprite);
-        for (let card of this.cardThings) {
+        for (let card of this.cards) {
             card.draw(ctx, drawSprite);
         }
         for (let card of this.underpile) {
             card.draw(ctx, drawSprite);
         }
-        this.pile[1].draw(ctx, drawSprite);
+        for (let card of this.pile) {
+            card.draw(ctx, drawSprite);
+        }
     }
 
     playCard(self, card) {
-        console.log(self);
-        console.log(card)
+        self.turn++;
+        for (let pcard of self.pile) {
+            self.underpile.push(pcard);
+        }
+        self.pile = [];
+        // search for other cards of the same rank
+        for (let othercard of self.cards) {
+            if (othercard.rank === card.rank) {
+                self.pile.push(othercard);
+            }
+        }
+        for (let pcard of self.pile) {
+            self.cards = self.cards.filter(othercard => othercard.rank != pcard.rank || othercard.suit != pcard.suit);            
+        }
+        self.cards = self.cards.filter(othercard => othercard.rank != card.rank || othercard.suit != card.suit);
+        self.pile.push(card);
+        self.adjustCardPos(self);
+        self.endTurn(self);
     }
 
-    adjustCardPos() {
-        for (let i=0; i < this.cardThings.length; i++) {
-            this.cardThings[i].x = 90 + (90*i);
-            this.cardThings[i].y = (900 - 405) + (135 * Math.floor(i / 9));
+    adjustCardPos(self) {
+        for (let i=0; i < self.cards.length; i++) {
+            self.cards[i].x = 90 + (90*i);
+            self.cards[i].y = (900 - 405) + (135 * Math.floor(i / 9));
+        }
+        for (let card of this.pile) {
+            card.x = 405;
+            card.y = 305;
         }
     }
 
@@ -58,6 +90,7 @@ export class WorldScene {
     }
 
     endTurn(self) {
+        self.turnDisplay.text = "sending cards";
         fetch(
             `${SERVER}/update`, {
 			    method: "POST",
@@ -65,9 +98,7 @@ export class WorldScene {
  			    body: JSON.stringify({
                     "rid": self.rid,
                     "uid": self.uid,
-                    "gamestate": {
-                        "explosion": self.explosion.x
-                    }
+                    "pile": JSON.stringify(piledump(self.pile))
                 }),
 			    cache: "no-cache",
 			    headers: new Headers({
@@ -78,7 +109,7 @@ export class WorldScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
-                self.turn++;
+                self.turnDisplay.text = "waiting for the other player...";
                 self.game.setTimer(600.0, self.syncWithServer, self);
             }
         )
@@ -106,7 +137,10 @@ export class WorldScene {
                 self.turn = data["turn"];
                 if (self.isMyTurn()) {
                     self.turnDisplay.text = "It's your turn!";
-                    self.explosion.x = data["gamestate"]["explosion"];
+                    self.pile = [];
+                    for (let arr of JSON.parse(data["pile"])) {
+                        self.pile.push(new Card(arr[0], arr[1], 405, 305));
+                    }
                 }
             }
         )
@@ -129,4 +163,12 @@ class TurnDisplay extends Thing {
         ctx.font = "16pt Sans";
         ctx.fillText(this.text, this.x - width, this.y);
     }
+}
+
+function piledump(pile) {
+    let arr = [];
+    for (let card of pile) {
+        arr.push([card.suit, card.rank]);
+    }
+    return arr
 }
