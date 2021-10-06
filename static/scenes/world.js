@@ -1,6 +1,6 @@
 /* Primary game scene in which the game actually occurs!! */
 import { Thing } from "../thing.js";
-import { Card, Cardback } from "../card.js";
+import { Card, Cardback, OCard } from "../card.js";
 
 const SERVER = "";
 
@@ -11,12 +11,16 @@ export class WorldScene {
         this.uid = uid;
         this.rid = rid;
         this.turn = 1;
-        this.facedown = new Cardback(505, 305);
-        this.cards = cards.map(card => new Card(card[0], card[1], 505, 305));
+        this.facedown = new Cardback(605, 305);
+        this.cards = cards.map(card => new Card(card[0], card[1], 605, 305));
         pile = JSON.parse(pile);
+        this.ocards = [];
+        for (let i = 0; i < 8 - (pile.length-1); i++) {
+            this.ocards.push(new OCard(605, 305));
+        }
         this.pile = [];
         for (let arr of pile) {
-            this.pile.push(new Card(arr[0], arr[1], 405, 305));
+            this.pile.push(new Card(arr[0], arr[1], 305, 305));
         }
         this.underpile = [];
         this.adjustCardPos(this);
@@ -41,6 +45,9 @@ export class WorldScene {
         for (let card of this.cards) {
             card.travel(ratio);
         }
+        for (let card of this.ocards) {
+            card.travel(ratio);
+        }
         for (let card of this.pile) {
             card.travel(ratio);
         }
@@ -51,6 +58,9 @@ export class WorldScene {
         this.turnDisplay.draw(ctx, drawSprite);
         this.facedown.draw(ctx, drawSprite);
         for (let card of this.cards) {
+            card.draw(ctx, drawSprite);
+        }
+        for (let card of this.ocards) {
             card.draw(ctx, drawSprite);
         }
         for (let card of this.underpile) {
@@ -85,10 +95,14 @@ export class WorldScene {
     adjustCardPos(self) {
         for (let i=0; i < self.cards.length; i++) {
             self.cards[i].x = 90 + (90*i);
-            self.cards[i].y = (900 - 405) + (135 * Math.floor(i / 9));
+            self.cards[i].y = (900 - 305) + (105 * Math.floor(i / 9));
+        }
+        for (let i=0; i < self.ocards.length; i++) {
+            self.ocards[i].x = 90 + (90*i);
+            self.ocards[i].y = 135 + (65 * Math.floor(i / 9));
         }
         for (let card of self.pile) {
-            card.x = 405;
+            card.x = 305;
             card.y = 305;
         }
     }
@@ -145,10 +159,17 @@ export class WorldScene {
                 self.turn = data["turn"];
                 if (self.isMyTurn()) {
                     self.turnDisplay.text = "It's your turn!";
-                    self.pile = [];
-                    for (let arr of JSON.parse(data["pile"])) {
-                        self.pile.push(new Card(arr[0], arr[1], 405, 305));
+                    for (let pcard of self.pile) {
+                        self.underpile.push(pcard);
                     }
+                    self.pile = [];
+                    let new_pile = JSON.parse(data["pile"]);
+                    let played_cards = self.ocards.splice((self.ocards.length + 1) - new_pile.length, new_pile.length);
+                    // the last element of new_pile gets duplicated and I'm not sure why yet...
+                    for (let i=0; i < new_pile.length - 1; i++) {
+                        self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
+                    }
+                    self.adjustCardPos(self);
                 }
             }
         )

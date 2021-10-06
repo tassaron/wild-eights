@@ -20,7 +20,7 @@ export class LobbyScene {
         if (this.uid2) {
             this.game.changeScene(new WorldScene(this.game, this.rid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile));
         } else if (this.game.timer[0] == 0.0) {
-            this.game.setTimer(900.0, this.syncWithServer, this);
+            this.game.setTimer(600.0, this.syncWithServer, this);
         }
     }
 

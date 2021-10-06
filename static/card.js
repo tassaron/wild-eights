@@ -1,16 +1,13 @@
 import { Thing } from "./thing.js";
-import { Button } from "./button.js";
 
-export class Card {
-    constructor(s, r, x, y) {
+class CardBase {
+    constructor(x, y) {
         this._x = x;
         this._y = y;
         this.xDest = x;
         this.yDest = y;
         this.width = 90;
         this.height = 135;
-        this.suit = s;
-        this.rank = r;
         this.cooldown = 0.0;
     }
 
@@ -21,10 +18,6 @@ export class Card {
     }
     set y(val) {
         this.yDest = val;
-    }
-
-    draw(ctx, drawSprite) {
-        drawSprite.card(this.suit, this.rank, Math.floor(this._x), Math.floor(this._y));
     }
 
     update(ratio, keyboard, mouse, func=function() {}, self=this) {
@@ -38,23 +31,38 @@ export class Card {
         }
     }
 
+    collides(other) {
+        return (this.x + this.width > other.x && this.x < other.x + other.width && other.y + other.height > this.y && other.y < this.y + this.height);
+    }
+
     travel(ratio) {
         if (this._x > this.xDest) {this._x -= ratio*4}
         if (this._x < this.xDest) {this._x += ratio*4}
         if (this._y > this.yDest) {this._y -= ratio*4}
         if (this._y < this.yDest) {this._y += ratio*4}
     }
+}
 
-    collides(other) {
-        return (this._x + this.width > other.x && this._x < other.x + other.width && other.y + other.height > this._y && other.y < this._y + this.height);
+export class Card extends CardBase{
+    constructor(s, r, x, y) {
+        super(x, y);
+        this.suit = s;
+        this.rank = r;
+    }
+
+    draw(ctx, drawSprite) {
+        drawSprite.card(this.suit, this.rank, Math.floor(this._x), Math.floor(this._y));
     }
 }
 
-export class Cardback extends Thing {
-    constructor(x, y) {
-        super(x, y, 90, 135, "cardback");
+export class Cardback extends CardBase {
+    draw(ctx, drawSprite) {
+        drawSprite.cardback(this.x, this.y);
     }
+}
 
-    update(ratio, keyboard, mouse) {
+export class OCard extends CardBase {
+    draw(ctx, drawSprite) {
+        drawSprite.ocard(Math.floor(this.x), Math.floor(this.y));
     }
 }

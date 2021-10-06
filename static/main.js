@@ -33,6 +33,13 @@ const drawSprite = {
     },
     cardback: function(x, y) {
         ctx.drawImage(sprites.cards, (13*90)*4, 0, 90, 135, x, y, 90, 135);
+    },
+    ocard: function(x, y) {
+        ctx.save()
+        ctx.translate(x+90,y);
+        ctx.scale(-1, -1);
+        this.cardback(0, 0);
+        ctx.restore();
     }
 };
 
