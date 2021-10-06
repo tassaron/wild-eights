@@ -5,7 +5,7 @@ import { Card, Cardback, OCard } from "../card.js";
 const SERVER = "";
 
 export class WorldScene {
-    constructor(game, rid, odd_turns, uid, cards, pile) {
+    constructor(game, rid, odd_turns, uid, cards, pile, pickedUp) {
         this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
@@ -16,8 +16,9 @@ export class WorldScene {
         pile = JSON.parse(pile);
         this.ocards = [];
         for (let i = 0; i < 8 - (pile.length-1); i++) {
-            this.ocards.push(new OCard(605, 305));
+            this.ocards.push(new OCard(605, 305 + 135));
         }
+        if (pickedUp == 1) {this.ocards.push(new OCard(605, 305 + 135))}
         this.pile = [];
         for (let arr of pile) {
             this.pile.push(new Card(arr[0], arr[1], 305, 305));
@@ -32,12 +33,16 @@ export class WorldScene {
                 this.turnDisplay.text = "waiting for the other player...";
             }
         }
+        this.hasPickedUp = false;
     }
 
     update(ratio, keyboard, mouse) {
         if (this.isMyTurn()) {
             for (let i=0; i < this.cards.length; i++) {
                 this.cards[i].update(ratio, keyboard, mouse, function(self) { self.playCard(self, self.cards[i]) }, this);
+            }
+            if (!this.hasPickedUp) {
+                this.facedown.update(ratio, keyboard, mouse, this.pickupCard, this);
             }
         } else if (this.game.timer[0] == 0.0) {
             this.game.setTimer(600.0, this.syncWithServer, this);
@@ -69,6 +74,33 @@ export class WorldScene {
         for (let card of this.pile) {
             card.draw(ctx, drawSprite);
         }
+    }
+
+    pickupCard(self) {
+        self.hasPickedUp = true;
+        self.turnDisplay.text = "asking server for a card...";
+        fetch(
+            `${SERVER}/newcard`, {
+			    method: "POST",
+			    credentials: "same-origin",
+ 			    body: JSON.stringify({
+                    "rid": self.rid,
+                    "uid": self.uid
+                }),
+			    cache: "no-cache",
+			    headers: new Headers({
+				    "content-type": "application/json"
+			    })
+            }
+        ).then(
+            response => response.ok ? response.json() : null
+        ).then(
+            data => {
+                self.turnDisplay.text = "Still your turn!";
+                self.cards.push(new Card(data["card"][0], data["card"][1], 605, 305));
+                self.adjustCardPos(self);
+            }
+        )
     }
 
     playCard(self, card) {
@@ -107,8 +139,11 @@ export class WorldScene {
         }
     }
 
-    isMyTurn() {
-        return ((this.odd_turns && this.turn % 2 != 0) || (!this.odd_turns && this.turn % 2 == 0))
+    isMyTurn(turn) {
+        if (turn === undefined) {
+            turn = this.turn;
+        }
+        return ((this.odd_turns && turn % 2 != 0) || (!this.odd_turns && turn % 2 == 0))
     }
 
     endTurn(self) {
@@ -156,23 +191,35 @@ export class WorldScene {
         ).then(
             data => {
                 if (data === null) {return}
-                self.turn = data["turn"];
-                if (self.isMyTurn()) {
-                    self.turnDisplay.text = "It's your turn!";
-                    for (let pcard of self.pile) {
-                        self.underpile.push(pcard);
+                let new_pile = JSON.parse(data["pile"]);
+                let turn = data["turn"];
+                if (self.isMyTurn(turn)) {
+                    if (data["pickedUp"]) {
+                        self.ocards.push(new OCard(605, 305 + 135));
+                        self.adjustCardPos(self);
+                        self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile)}, self);
+                        return
                     }
-                    self.pile = [];
-                    let new_pile = JSON.parse(data["pile"]);
-                    let played_cards = self.ocards.splice((self.ocards.length + 1) - new_pile.length, new_pile.length);
-                    // the last element of new_pile gets duplicated and I'm not sure why yet...
-                    for (let i=0; i < new_pile.length - 1; i++) {
-                        self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
-                    }
-                    self.adjustCardPos(self);
+                    self.startNextTurn(self, turn, new_pile);
                 }
             }
         )
+    }
+
+    startNextTurn(self, turn, new_pile) {
+        self.hasPickedUp = false;
+        self.turnDisplay.text = "It's your turn!";
+        for (let pcard of self.pile) {
+            self.underpile.push(pcard);
+        }
+        self.pile = [];
+        let played_cards = self.ocards.splice((self.ocards.length + 1) - new_pile.length, new_pile.length);
+        // the last element of new_pile gets duplicated and I'm not sure why yet...
+        for (let i=0; i < new_pile.length - 1; i++) {
+            self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
+        }
+        self.adjustCardPos(self);
+        self.turn = turn;
     }
 }
 

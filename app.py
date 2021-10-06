@@ -27,7 +27,8 @@ class GameRoom:
         self.rid = GameRoom.new_room()
         self.uid1 = uuid4()
         self.uid2 = None
-        self.turn = 0
+        self.turn = 1
+        self.pickedUp = 0
 
     def createDeck(self):
         self.deck = []
@@ -67,6 +68,14 @@ def four_letter_code():
     return "".join([random.choice(ascii_uppercase) for _ in range(4)])
 
 
+@app.route("/newcard", methods=["POST"])
+def newcard():
+    data = flask.request.get_json()
+    room = rooms[data["rid"]]
+    room.pickedUp = room.turn
+    return { "card": room.takeCards(1)[0] }, 200
+
+
 @app.route("/lobby", methods=["POST"])
 def refreshlobby():
     """Called by uid1 while waiting for uid2 to join the room"""
@@ -81,7 +90,8 @@ def refreshlobby():
             return {
                 "uid": room.uid2,
                 "cards": room.takeCards(8),
-                "pile": room.pile
+                "pile": room.pile,
+                "pickedUp": room.pickedUp
             }, 200
     except KeyError:
         flask.abort(400)
@@ -91,11 +101,13 @@ def refreshlobby():
 def refreshgame():
     data = flask.request.get_json()
     room = rooms[data["rid"]]
-    return {
+    resp = {
         "rid": room.rid,
         "turn": room.turn,
         "pile": room.pile,
-    }, 200
+        "pickedUp": room.pickedUp == room.turn - 1
+    }
+    return resp, 200
 
 
 @app.route("/update", methods=["POST"])

@@ -48,6 +48,7 @@ export class Card extends CardBase{
         super(x, y);
         this.suit = s;
         this.rank = r;
+        this.cooldown = 100.0;
     }
 
     draw(ctx, drawSprite) {
