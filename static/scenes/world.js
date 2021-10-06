@@ -11,7 +11,8 @@ export class WorldScene {
         this.uid = uid;
         this.rid = rid;
         this.turn = 1;
-        this.cards = cards.map(card => new Card(card[0], card[1], 0, 0));
+        this.facedown = new Cardback(505, 305);
+        this.cards = cards.map(card => new Card(card[0], card[1], 505, 305));
         pile = JSON.parse(pile);
         this.pile = [];
         for (let arr of pile) {
@@ -37,11 +38,18 @@ export class WorldScene {
         } else if (this.game.timer[0] == 0.0) {
             this.game.setTimer(600.0, this.syncWithServer, this);
         }
+        for (let card of this.cards) {
+            card.travel(ratio);
+        }
+        for (let card of this.pile) {
+            card.travel(ratio);
+        }
     }
 
     draw(ctx, drawSprite) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         this.turnDisplay.draw(ctx, drawSprite);
+        this.facedown.draw(ctx, drawSprite);
         for (let card of this.cards) {
             card.draw(ctx, drawSprite);
         }
@@ -79,7 +87,7 @@ export class WorldScene {
             self.cards[i].x = 90 + (90*i);
             self.cards[i].y = (900 - 405) + (135 * Math.floor(i / 9));
         }
-        for (let card of this.pile) {
+        for (let card of self.pile) {
             card.x = 405;
             card.y = 305;
         }
