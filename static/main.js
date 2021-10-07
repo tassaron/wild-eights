@@ -71,16 +71,8 @@ sprites.cards.src = "static/assets/cards.png";
 sprites.suits.addEventListener("load", preload_success)
 sprites.suits.src = "static/assets/suits.png";
 
-/*
-function pauseGame() {
-    if (!game.game_over) {
-        game.paused = !game.paused;
-    }
-}*/
-
 function loop() {
     game.update(keyboard, mouse);
     game.draw(ctx, drawSprite);
     requestAnimationFrame(loop);
 }
-//document.getElementById("pause_button").addEventListener('click', pauseGame, false);

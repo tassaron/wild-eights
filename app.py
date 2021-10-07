@@ -29,7 +29,7 @@ class GameRoom:
         self.uid2 = None
         self.turn = 1
         self.pickedUp = 0
-        self.extraPickedUp = 0
+        self.pickedUpNum = 0
         self.wildcardSuit = None
 
     def createDeck(self):
@@ -80,9 +80,10 @@ def newcard():
     if number == 1:
         # this property represents when singular cards are picked up voluntarily
         if room.pickedUp == room.turn:
-            room.extraPickedUp = room.turn
+            room.pickedUpNum += 1
         else:
             room.pickedUp = room.turn
+            room.pickedUpNum = 1
     return { "cards": room.takeCards(number) }, 200
 
 
@@ -101,8 +102,8 @@ def refreshlobby():
                 "uid": room.uid2,
                 "cards": room.takeCards(8),
                 "pile": room.pile,
-                "pickedUp": room.pickedUp,
-                "extraPickedUp": room.extraPickedUp,
+                "pickedUp": room.pickedUp == room.turn - 1,
+                "pickedUpNum": room.pickedUpNum,
                 "turn": room.turn,
                 "wildcardSuit": room.wildcardSuit,
             }, 200
@@ -120,7 +121,7 @@ def refreshgame():
         "pile": room.pile,
         "wildcardSuit": room.wildcardSuit,
         "pickedUp": room.pickedUp == room.turn - 1,
-        "extraPickedUp": room.extraPickedUp == room.turn - 1,
+        "pickedUpNum": room.pickedUpNum
     }
     return resp, 200
 

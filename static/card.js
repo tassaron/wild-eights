@@ -21,7 +21,7 @@ class CardBase {
     update(ratio, keyboard, mouse, func=function() {}, self=this) {
         if (mouse.leftClick && this.cooldown == 0.0 && this.collides(mouse)) {
             func(self);
-            this.cooldown = 300.0;
+            this.cooldown = 100.0;
         } else if (this.cooldown < 0.0) {
             this.cooldown = 0.0;
         } else if (this.cooldown > 0.0) {
@@ -52,21 +52,10 @@ export class Card extends CardBase{
 
     get suit() {return this.wildcardSuit === null ? this._suit : this.wildcardSuit}
 
-    update(ratio, keyboard, mouse, func=function() {}, self=this) {
-        super.update(ratio, keyboard, mouse, func, self);
-        if (this.rank == 8) {
-            this.eightTimer -= ratio;
-            if (this.eightTimer < 0.1) {
-                this.suit < 3 ? this.suit++ : this.suit = 0;
-                this.eightTimer = 220.0;
-            }
-        }
-    }
-
     draw(ctx, drawSprite) {
         drawSprite.card(this._suit, this.rank, Math.floor(this._x), Math.floor(this._y));
-        if (this.wildcardSuit) {
-            drawSprite.suit(this.wildcardSuit, this.x - 100, this.y);
+        if (this.wildcardSuit != null) {
+            drawSprite.suit(this.wildcardSuit, this.x - 100, this.y + 45);
         }
     }
 }

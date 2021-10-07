@@ -2,11 +2,12 @@
 import { Thing } from "../thing.js";
 import { Card, Cardback, OCard } from "../card.js";
 import { WildcardScene } from "./wildcard.js";
+import { GameOverScene } from "./gameover.js";
 
 const SERVER = "";
 
 export class WorldScene {
-    constructor(game, rid, odd_turns, uid, cards, pile, pickedUp, extraPickedUp, turn=1, wildcardSuit=null) {
+    constructor(game, rid, odd_turns, uid, cards, pile, pickedUp, pickedUpNum, turn=1, wildcardSuit=null) {
         this.loading = false;
         this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
@@ -17,11 +18,14 @@ export class WorldScene {
         this.cards = cards.map(card => new Card(card[0], card[1], 605, 305));
         pile = JSON.parse(pile);
         this.ocards = [];
-        for (let i = 0; i < 8 - (turn == 1 ? 0 : pile.length + pickedUp + countTwos(pile)*2); i++) {
+        for (let i = 0; i < 8 - (turn == 1 ? 0 : pile.length + (pickedUp ? pickedUpNum : 0) + countTwos(pile)*2); i++) {
             this.ocards.push(new OCard(605, 305 + 135));
         }
-        if (pickedUp == 1) {this.ocards.push(new OCard(605, 305 + 135))}
-        if (extraPickedUp == 1) {this.ocards.push(new OCard(605, 305 + 135))}
+        if (pickedUp == 1) {
+            for (let i = 0; i < pickedUpNum; i++) {
+                this.ocards.push(new OCard(605, 305 + 135))
+            }
+        }
         this.pile = [];
         for (let arr of pile) {
             this.pile.push(new Card(arr[0], arr[1], 305, 305));
@@ -38,13 +42,30 @@ export class WorldScene {
         this.hasPickedUp = false;
         this.skippedTurn = false;
         this.pile[this.pile.length-1].wildcardSuit = wildcardSuit;
-        if (turn == 1) {
-            let twosInPile = countTwos(this.pile);
-            if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
-        }
+        let twosInPile = countTwos(this.pile);
+        if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
     }
 
     update(ratio, keyboard, mouse) {
+        for (let card of this.cards) {
+            card.travel(ratio);
+        }
+        for (let card of this.ocards) {
+            card.travel(ratio);
+        }
+        for (let card of this.pile) {
+            card.travel(ratio);
+        }
+        if (this.underpile.length < 5) {
+            for (let card of this.underpile) {
+                card.travel(ratio);
+            }
+        } else {
+            for (let i = this.underpile.length - 5; i < this.underpile.length; i++) {
+                this.underpile[i].travel(ratio);
+            }
+        }
+        if (this.game.game_over) {return}
         if (this.isMyTurn()) {
             let option = false;
             for (let i=0; i < this.cards.length; i++) {
@@ -65,24 +86,6 @@ export class WorldScene {
         } else if (this.game.timer[0] == 0.0 && this.loading == false) {
             this.loading = true;
             this.game.setTimer(600.0, this.syncWithServer, this);
-        }
-        for (let card of this.cards) {
-            card.travel(ratio);
-        }
-        for (let card of this.ocards) {
-            card.travel(ratio);
-        }
-        for (let card of this.pile) {
-            card.travel(ratio);
-        }
-        if (this.underpile.length < 5) {
-            for (let card of this.underpile) {
-                card.travel(ratio);
-            }
-        } else {
-            for (let i = this.underpile.length - 5; i < this.underpile.length; i++) {
-                this.underpile[i].travel(ratio);
-            }
         }
     }
 
@@ -267,6 +270,11 @@ export class WorldScene {
                 for (let i = 1; i < self.pile.length-1; i++) {
                     self.underpile[self.underpile.length-i].wildcardSuit = null;
                 }
+                if (self.cards.length == 0) {
+                    self.game.changeScene(new GameOverScene(self.game, true));
+                    self.turnDisplay.text = ":D";
+                    return
+                }
                 self.turnDisplay.text = "waiting for the other player...";
                 self.game.setTimer(600.0, self.syncWithServer, self);
             }
@@ -300,10 +308,9 @@ export class WorldScene {
                 let turn = data["turn"];
                 if (self.isMyTurn(turn)) {
                     if (data["pickedUp"]) {
-                        if (data["extraPickedUp"]) {
-                            self.ocards.push(new OCard(605, 305 + 135));
+                        for (let i = 0; i < data["pickedUpNum"]; i++) {
+                            self.ocards.push(new OCard(605, 305 + 135))
                         }
-                        self.ocards.push(new OCard(605, 305 + 135));
                         self.adjustCardPos(self);
                         self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile, data["wildcardSuit"])}, self);
                         return
@@ -337,6 +344,11 @@ export class WorldScene {
         let twosInPile = countTwos(self.pile);
         if (twosInPile) {
             self.pickupCards(self, twosInPile*2, turn);
+            return
+        }
+        if (self.ocards.length == 0) {
+            self.game.changeScene(new GameOverScene(self.game, false));
+            self.turnDisplay.text = ":(";
             return
         }
         self.turnDisplay.text = "It's your turn!";
@@ -382,6 +394,9 @@ function piledump(pile) {
 }
 
 function countTwos(pile) {
-    if (pile.length > 0 && pile[0].rank == 2) {return pile.length}
-    return 0
+    let count = 0
+    for (let card of pile) {
+        if (card.rank == 2) {count++}
+    }
+    return count
 }

@@ -1,5 +1,4 @@
 import { MenuScene } from "./scenes/menu.js";
-import { GameOverScene } from "./scenes/gameover.js";
 
 const fpsRatio = ms => { return Math.min(ms / (1000 / 60), 2) }
 let then;
@@ -48,11 +47,5 @@ export class Game {
     darkenCanvas(ctx) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    }
-
-    gameOver() {
-        if (!this.game_over) {
-            this.changeScene(new GameOverScene(this));
-        }
     }
 }
