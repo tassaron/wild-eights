@@ -23,7 +23,7 @@ class CardBase {
     update(ratio, keyboard, mouse, func=function() {}, self=this) {
         if (mouse.leftClick && this.cooldown == 0.0 && this.collides(mouse)) {
             func(self);
-            this.cooldown = 30.0;
+            this.cooldown = 300.0;
         } else if (this.cooldown < 0.0) {
             this.cooldown = 0.0;
         } else if (this.cooldown > 0.0) {

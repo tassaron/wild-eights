@@ -35,6 +35,7 @@ export class WorldScene {
             }
         }
         this.hasPickedUp = false;
+        this.skippedTurn = false;
     }
 
     update(ratio, keyboard, mouse) {
@@ -46,14 +47,14 @@ export class WorldScene {
                     this.cards[i].update(ratio, keyboard, mouse, function(self) { self.playCard(self, self.cards[i]) }, this);
                 }
             }
+            if (!this.hasPickedUp) {
+                this.facedown.update(ratio, keyboard, mouse, this.pickupCard, this);
+            }
             if (!option && this.hasPickedUp) {
                 this.turnDisplay.text = "You're forced to pass!";
                 this.emptyPile(this);
                 this.endTurn(this);
                 this.turn++;
-            }
-            if (!this.hasPickedUp) {
-                this.facedown.update(ratio, keyboard, mouse, this.pickupCard, this);
             }
         } else if (this.game.timer[0] == 0.0 && this.loading == false) {
             this.loading = true;
@@ -67,6 +68,15 @@ export class WorldScene {
         }
         for (let card of this.pile) {
             card.travel(ratio);
+        }
+        if (this.underpile.length < 5) {
+            for (let card of this.underpile) {
+                card.travel(ratio);
+            }
+        } else {
+            for (let i = this.underpile.length - 5; i < this.underpile.length; i++) {
+                this.underpile[i].travel(ratio);
+            }
         }
     }
 
@@ -89,7 +99,6 @@ export class WorldScene {
     }
 
     pickupCard(self) {
-        self.hasPickedUp = true;
         self.turnDisplay.text = "asking server for a card...";
         fetch(
             `${SERVER}/newcard`, {
@@ -97,7 +106,8 @@ export class WorldScene {
 			    credentials: "same-origin",
  			    body: JSON.stringify({
                     "rid": self.rid,
-                    "uid": self.uid
+                    "uid": self.uid,
+                    "number": 1
                 }),
 			    cache: "no-cache",
 			    headers: new Headers({
@@ -109,27 +119,71 @@ export class WorldScene {
         ).then(
             data => {
                 self.turnDisplay.text = "Still your turn!";
-                self.cards.push(new Card(data["card"][0], data["card"][1], 605, 305));
+                self.cards.push(new Card(data["cards"][0][0], data["cards"][0][1], 605, 305));
+                self.hasPickedUp = true;
                 self.adjustCardPos(self);
             }
         )
     }
 
+    pickupCards(self, number, turn) {
+        self.turnDisplay.text = `You have to pick up ${number}`;
+        fetch(
+            `${SERVER}/newcard`, {
+			    method: "POST",
+			    credentials: "same-origin",
+ 			    body: JSON.stringify({
+                    "rid": self.rid,
+                    "uid": self.uid,
+                    "number": number
+                }),
+			    cache: "no-cache",
+			    headers: new Headers({
+				    "content-type": "application/json"
+			    })
+            }
+        ).then(
+            response => response.ok ? response.json() : null
+        ).then(
+            data => {
+                for (let card of data["cards"]) {
+                    self.cards.push(new Card(card[0], card[1], 605, 305));
+                }
+                self.adjustCardPos(self);
+                self.turn = turn;
+                self.loading = false;
+                self.turnDisplay.text = "It's your turn!";
+            }
+        )
+    }
+
     playCard(self, card) {
-        self.turn++;
-        self.emptyPile(self);
+        if (!self.skippedTurn) {
+            // Don't empty the pile if a Jack was played last time
+            self.emptyPile(self);
+        }
+        self.pile.push(card);
         // search for other cards of the same rank
         for (let othercard of self.cards) {
-            if (othercard.rank === card.rank) {
+            if (othercard.rank === card.rank && othercard.suit != card.suit) {
                 self.pile.push(othercard);
             }
         }
         for (let pcard of self.pile) {
             self.cards = self.cards.filter(othercard => othercard.rank != pcard.rank || othercard.suit != pcard.suit);            
         }
-        self.cards = self.cards.filter(othercard => othercard.rank != card.rank || othercard.suit != card.suit);
-        self.pile.push(card);
+        let twosInPile = countTwos(self.pile) * 2;
+        for (let i = 0; i < twosInPile; i++) {
+            self.ocards.push(new OCard(605, 305 + 135));
+        }
         self.adjustCardPos(self);
+        if (card.rank == 11) {
+            self.skippedTurn = true;
+            self.turnDisplay.text = "Play again!";
+            return
+        }
+        self.skippedTurn = false;
+        self.turn++;
         self.turnDisplay.text = "sending cards";
         self.endTurn(self);
     }
@@ -143,12 +197,12 @@ export class WorldScene {
 
     adjustCardPos(self) {
         for (let i=0; i < self.cards.length; i++) {
-            self.cards[i].x = 90 + (90*i);
-            self.cards[i].y = (900 - 305) + (105 * Math.floor(i / 9));
+            self.cards[i].x = 90 + (90 * i) - 720 * (Math.floor(i / 8));
+            self.cards[i].y = (900 - 305) + (105 * Math.floor(i / 8));
         }
         for (let i=0; i < self.ocards.length; i++) {
-            self.ocards[i].x = 90 + (90*i);
-            self.ocards[i].y = 135 + (65 * Math.floor(i / 9));
+            self.ocards[i].x = 90 + (90 * i) - 720 * (Math.floor(i / 8));
+            self.ocards[i].y = 135 + (65 * Math.floor(i / 8));
         }
         for (let card of self.pile) {
             card.x = 305;
@@ -229,18 +283,24 @@ export class WorldScene {
     }
 
     startNextTurn(self, turn, new_pile) {
-        self.hasPickedUp = false;
-        self.turnDisplay.text = "It's your turn!";
-        for (let pcard of self.pile) {
-            self.underpile.push(pcard);
+        /* Happens at the very end of an opponent's turn, starting the next turn */
+        if (turn == self.turn) {
+            console.log("bingo")
+            return
         }
-        self.pile = [];
-        let played_cards = self.ocards.splice((self.ocards.length + 1) - new_pile.length, new_pile.length);
-        // the last element of new_pile gets duplicated and I'm not sure why yet...
-        for (let i=0; i < new_pile.length - 1; i++) {
+        self.hasPickedUp = false;
+        self.emptyPile(self);
+        let played_cards = self.ocards.splice((self.ocards.length) - new_pile.length, new_pile.length);
+        for (let i=0; i < new_pile.length; i++) {
             self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
         }
         self.adjustCardPos(self)
+        let twosInPile = countTwos(self.pile);
+        if (twosInPile) {
+            self.pickupCards(self, twosInPile*2, turn);
+            return
+        }
+        self.turnDisplay.text = "It's your turn!";
         self.turn = turn;
         self.loading = false;
     }
@@ -280,4 +340,9 @@ function piledump(pile) {
         arr.push([card.suit, card.rank]);
     }
     return arr
+}
+
+function countTwos(pile) {
+    if (pile.length > 0 && pile[0].rank == 2) {return pile.length}
+    return 0
 }

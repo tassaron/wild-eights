@@ -32,7 +32,7 @@ class GameRoom:
 
     def createDeck(self):
         self.deck = []
-        cards = list(range(52))
+        cards = list(range(1,53))
         for _ in range(52):
             ch = random.choice(cards)
             self.deck.append(ch)
@@ -72,8 +72,14 @@ def four_letter_code():
 def newcard():
     data = flask.request.get_json()
     room = rooms[data["rid"]]
-    room.pickedUp = room.turn
-    return { "card": room.takeCards(1)[0] }, 200
+    try:
+        number = int(data["number"])
+    except ValueError:
+        flask.abort(400)
+    if number == 1:
+        # this property represents when singular cards are picked up voluntarily
+        room.pickedUp = room.turn
+    return { "cards": room.takeCards(number) }, 200
 
 
 @app.route("/lobby", methods=["POST"])
