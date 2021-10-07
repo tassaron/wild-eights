@@ -29,6 +29,8 @@ class GameRoom:
         self.uid2 = None
         self.turn = 1
         self.pickedUp = 0
+        self.extraPickedUp = 0
+        self.wildcardSuit = None
 
     def createDeck(self):
         self.deck = []
@@ -59,7 +61,6 @@ class GameRoom:
         return returnval
 
 
-
 def is_valid(gamestate):
     return True
 
@@ -78,7 +79,10 @@ def newcard():
         flask.abort(400)
     if number == 1:
         # this property represents when singular cards are picked up voluntarily
-        room.pickedUp = room.turn
+        if room.pickedUp == room.turn:
+            room.extraPickedUp = room.turn
+        else:
+            room.pickedUp = room.turn
     return { "cards": room.takeCards(number) }, 200
 
 
@@ -97,7 +101,10 @@ def refreshlobby():
                 "uid": room.uid2,
                 "cards": room.takeCards(8),
                 "pile": room.pile,
-                "pickedUp": room.pickedUp
+                "pickedUp": room.pickedUp,
+                "extraPickedUp": room.extraPickedUp,
+                "turn": room.turn,
+                "wildcardSuit": room.wildcardSuit,
             }, 200
     except KeyError:
         flask.abort(400)
@@ -111,7 +118,9 @@ def refreshgame():
         "rid": room.rid,
         "turn": room.turn,
         "pile": room.pile,
-        "pickedUp": room.pickedUp == room.turn - 1
+        "wildcardSuit": room.wildcardSuit,
+        "pickedUp": room.pickedUp == room.turn - 1,
+        "extraPickedUp": room.extraPickedUp == room.turn - 1,
     }
     return resp, 200
 
@@ -121,7 +130,12 @@ def updategame():
     data = flask.request.get_json()
     room = rooms[data["rid"]]
     room.pile = data["pile"]
-    room.turn += 1
+    room.wildcardSuit = data["wildcardSuit"]
+    try:
+        if room.pile[0][1] != 11:
+            room.turn += 1
+    except IndexError:
+        room.turn += 1
     return {}, 200
 
 

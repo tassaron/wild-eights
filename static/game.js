@@ -9,7 +9,6 @@ export class Game {
         this.game_over = false;
         then = Date.now();
         this.ctx = ctx;
-        this.allowUserInput = true;
         this.timer = [0.0, function(){}, this];
         this.scene = new MenuScene(this);
         this.prevScene = this.scene;
@@ -25,10 +24,6 @@ export class Game {
             this.timer[0] = 0.0;
             console.log("calling timer")
             this.timer[1](this.timer[2]);
-        }
-        if (!this.allowUserInput) {
-            mouse.leftClick = false;
-            keyboard.p = false;
         }
         this.scene.update(ratio, keyboard, mouse);
         then = Date.now();
@@ -47,8 +42,6 @@ export class Game {
         scene.game = this;
         let prevScene = this.scene;
         this.prevScene = prevScene;
-        this.allowUserInput = false;
-        this.timer = [10.0, function(self) {self.allowUserInput=true}, this];
         this.scene = scene;
     }
 

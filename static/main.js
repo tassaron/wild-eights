@@ -23,13 +23,14 @@ ctx.fillText("loading", (canvas.width / 2) - (ctx.measureText("loading").width /
 let preloaded = 0;
 
 let sprites = {
-    "cards": new Image()
+    "cards": new Image(),
+    "suits": new Image()
 }
 
 const drawSprite = {
     // 0: spades, 1: hearts, 2: diamonds, 3: clubs
-    card: function(s, r, x, y) {
-        ctx.drawImage(sprites.cards, (90 * (13 - r)) + ( (13*90)* s), 0, 90, 135, x, y, 90, 135);
+    card: function(s, r, x, y, scale=1) {
+        ctx.drawImage(sprites.cards, (90 * (13 - r)) + ( (13*90)* s), 0, 90, 135, x, y, 90*scale, 135*scale);
     },
     cardback: function(x, y) {
         ctx.drawImage(sprites.cards, (13*90)*4, 0, 90, 135, x, y, 90, 135);
@@ -40,6 +41,19 @@ const drawSprite = {
         ctx.scale(-1, -1);
         this.cardback(0, 0);
         ctx.restore();
+    },
+    suit: function(s, x, y) {
+        ctx.beginPath();
+        ctx.arc(x + 27, y + 27, 56, 0, Math.PI * 2);
+        ctx.fillStyle = "black";
+        ctx.fill();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.arc(x + 27, y + 27, 52, 0, Math.PI * 2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        ctx.closePath();
+        ctx.drawImage(sprites.suits, (54 * s)-1, 0, 54, 54, x, y, 54, 54);
     }
 };
 
@@ -54,6 +68,8 @@ function preload_success() {
 
 sprites.cards.addEventListener("load", preload_success)
 sprites.cards.src = "static/assets/cards.png";
+sprites.suits.addEventListener("load", preload_success)
+sprites.suits.src = "static/assets/suits.png";
 
 /*
 function pauseGame() {

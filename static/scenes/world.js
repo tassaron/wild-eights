@@ -1,25 +1,27 @@
 /* Primary game scene in which the game actually occurs!! */
 import { Thing } from "../thing.js";
 import { Card, Cardback, OCard } from "../card.js";
+import { WildcardScene } from "./wildcard.js";
 
 const SERVER = "";
 
 export class WorldScene {
-    constructor(game, rid, odd_turns, uid, cards, pile, pickedUp) {
+    constructor(game, rid, odd_turns, uid, cards, pile, pickedUp, extraPickedUp, turn=1, wildcardSuit=null) {
         this.loading = false;
         this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
         this.rid = rid;
-        this.turn = 1;
+        this.turn = turn;
         this.facedown = new Cardback(605, 305);
         this.cards = cards.map(card => new Card(card[0], card[1], 605, 305));
         pile = JSON.parse(pile);
         this.ocards = [];
-        for (let i = 0; i < 8 - (pile.length-1); i++) {
+        for (let i = 0; i < 8 - (turn == 1 ? 0 : pile.length + pickedUp + countTwos(pile)*2); i++) {
             this.ocards.push(new OCard(605, 305 + 135));
         }
         if (pickedUp == 1) {this.ocards.push(new OCard(605, 305 + 135))}
+        if (extraPickedUp == 1) {this.ocards.push(new OCard(605, 305 + 135))}
         this.pile = [];
         for (let arr of pile) {
             this.pile.push(new Card(arr[0], arr[1], 305, 305));
@@ -27,15 +29,19 @@ export class WorldScene {
         this.underpile = [];
         this.adjustCardPos(this);
         if (!this.odd_turns) {
-            if (this.pile.length > 1) {
+            if (turn == 2) {
                 this.turnDisplay.text = "It's your turn already!";
-                this.turn = 2;
             } else {
                 this.turnDisplay.text = "waiting for the other player...";
             }
         }
         this.hasPickedUp = false;
         this.skippedTurn = false;
+        this.pile[this.pile.length-1].wildcardSuit = wildcardSuit;
+        if (turn == 1) {
+            let twosInPile = countTwos(this.pile);
+            if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
+        }
     }
 
     update(ratio, keyboard, mouse) {
@@ -127,7 +133,7 @@ export class WorldScene {
     }
 
     pickupCards(self, number, turn) {
-        self.turnDisplay.text = `You have to pick up ${number}`;
+        self.turnDisplay.text = `asking server for ${number} cards...`;
         fetch(
             `${SERVER}/newcard`, {
 			    method: "POST",
@@ -152,25 +158,41 @@ export class WorldScene {
                 self.adjustCardPos(self);
                 self.turn = turn;
                 self.loading = false;
-                self.turnDisplay.text = "It's your turn!";
+                self.turnDisplay.text = `Picked up ${number} cards. Your turn!`;
             }
         )
     }
 
     playCard(self, card) {
+        if (card.rank == 8 && card.wildcardSuit === null) {
+            self.game.changeScene(new WildcardScene(card));
+            return
+        }
         if (!self.skippedTurn) {
-            // Don't empty the pile if a Jack was played last time
+            // Don't empty the pile if a Jack (skip turn) was played last time
+            if (self.pile.length != 0) {
+                self.pile[self.pile.length-1].wildcardSuit = null;
+            } else if (self.underpile.length > 0) {
+                self.underpile[self.underpile.length-1].wildcardSuit = null;
+            }
             self.emptyPile(self);
         }
-        self.pile.push(card);
-        // search for other cards of the same rank
+        if (card.wildcardSuit === null) {
+            // chosen card goes at the bottom if not a wildcard
+            self.pile.push(card);
+        }
+        // search for other cards of the same _suit (real suit, not chosen suit)
         for (let othercard of self.cards) {
-            if (othercard.rank === card.rank && othercard.suit != card.suit) {
+            if (othercard.rank === card.rank && othercard._suit != card._suit) {
                 self.pile.push(othercard);
             }
         }
+        if (card.wildcardSuit != null) {
+            // chosen card goes at the top if it's a wildcard
+            self.pile.push(card);
+        }
         for (let pcard of self.pile) {
-            self.cards = self.cards.filter(othercard => othercard.rank != pcard.rank || othercard.suit != pcard.suit);            
+            self.cards = self.cards.filter(othercard => othercard.rank != pcard.rank || othercard._suit != pcard._suit);            
         }
         let twosInPile = countTwos(self.pile) * 2;
         for (let i = 0; i < twosInPile; i++) {
@@ -179,12 +201,13 @@ export class WorldScene {
         self.adjustCardPos(self);
         if (card.rank == 11) {
             self.skippedTurn = true;
+            self.hasPickedUp = false;
             self.turnDisplay.text = "Play again!";
             return
         }
         self.skippedTurn = false;
         self.turn++;
-        self.turnDisplay.text = "sending cards";
+        self.turnDisplay.text = "sending cards...";
         self.endTurn(self);
     }
 
@@ -218,15 +241,20 @@ export class WorldScene {
     }
 
     endTurn(self) {
+        let request = {
+            "rid": self.rid,
+            "uid": self.uid,
+            "pile": JSON.stringify(piledump(self.pile)),
+            "wildcardSuit": null
+        }
+        if (self.pile.length > 0 && self.pile[self.pile.length-1].rank == 8) {
+            request.wildcardSuit = self.pile[self.pile.length-1].wildcardSuit;
+        }
         fetch(
             `${SERVER}/update`, {
 			    method: "POST",
 			    credentials: "same-origin",
- 			    body: JSON.stringify({
-                    "rid": self.rid,
-                    "uid": self.uid,
-                    "pile": JSON.stringify(piledump(self.pile))
-                }),
+ 			    body: JSON.stringify(request),
 			    cache: "no-cache",
 			    headers: new Headers({
 				    "content-type": "application/json"
@@ -236,6 +264,9 @@ export class WorldScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
+                for (let i = 1; i < self.pile.length-1; i++) {
+                    self.underpile[self.underpile.length-i].wildcardSuit = null;
+                }
                 self.turnDisplay.text = "waiting for the other player...";
                 self.game.setTimer(600.0, self.syncWithServer, self);
             }
@@ -269,12 +300,15 @@ export class WorldScene {
                 let turn = data["turn"];
                 if (self.isMyTurn(turn)) {
                     if (data["pickedUp"]) {
+                        if (data["extraPickedUp"]) {
+                            self.ocards.push(new OCard(605, 305 + 135));
+                        }
                         self.ocards.push(new OCard(605, 305 + 135));
                         self.adjustCardPos(self);
-                        self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile)}, self);
+                        self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile, data["wildcardSuit"])}, self);
                         return
                     }
-                    self.startNextTurn(self, turn, new_pile);
+                    self.startNextTurn(self, turn, new_pile, data["wildcardSuit"]);
                 } else {
                     self.loading = false;
                 }
@@ -282,10 +316,10 @@ export class WorldScene {
         )
     }
 
-    startNextTurn(self, turn, new_pile) {
+    startNextTurn(self, turn, new_pile, wildcardSuit) {
         /* Happens at the very end of an opponent's turn, starting the next turn */
         if (turn == self.turn) {
-            console.log("bingo")
+            // timing glitch to be ignored
             return
         }
         self.hasPickedUp = false;
@@ -293,6 +327,11 @@ export class WorldScene {
         let played_cards = self.ocards.splice((self.ocards.length) - new_pile.length, new_pile.length);
         for (let i=0; i < new_pile.length; i++) {
             self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
+            let ucard = self.underpile[self.underpile.length-(1+i)];
+            if (ucard) {ucard.wildcardSuit = null;}
+        }
+        if (wildcardSuit != null) {
+            self.pile[self.pile.length-1].wildcardSuit = wildcardSuit;
         }
         self.adjustCardPos(self)
         let twosInPile = countTwos(self.pile);
@@ -337,7 +376,7 @@ class TurnDisplay extends Thing {
 function piledump(pile) {
     let arr = [];
     for (let card of pile) {
-        arr.push([card.suit, card.rank]);
+        arr.push([card._suit, card.rank]);
     }
     return arr
 }

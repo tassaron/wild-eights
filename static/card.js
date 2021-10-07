@@ -1,5 +1,3 @@
-import { Thing } from "./thing.js";
-
 class CardBase {
     constructor(x, y) {
         this._x = x;
@@ -46,13 +44,30 @@ class CardBase {
 export class Card extends CardBase{
     constructor(s, r, x, y) {
         super(x, y);
-        this.suit = s;
+        this._suit = s;
         this.rank = r;
         this.cooldown = 100.0;
+        this.wildcardSuit = null;
+    }
+
+    get suit() {return this.wildcardSuit === null ? this._suit : this.wildcardSuit}
+
+    update(ratio, keyboard, mouse, func=function() {}, self=this) {
+        super.update(ratio, keyboard, mouse, func, self);
+        if (this.rank == 8) {
+            this.eightTimer -= ratio;
+            if (this.eightTimer < 0.1) {
+                this.suit < 3 ? this.suit++ : this.suit = 0;
+                this.eightTimer = 220.0;
+            }
+        }
     }
 
     draw(ctx, drawSprite) {
-        drawSprite.card(this.suit, this.rank, Math.floor(this._x), Math.floor(this._y));
+        drawSprite.card(this._suit, this.rank, Math.floor(this._x), Math.floor(this._y));
+        if (this.wildcardSuit) {
+            drawSprite.suit(this.wildcardSuit, this.x - 100, this.y);
+        }
     }
 }
 
