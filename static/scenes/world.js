@@ -6,6 +6,7 @@ const SERVER = "";
 
 export class WorldScene {
     constructor(game, rid, odd_turns, uid, cards, pile, pickedUp) {
+        this.loading = false;
         this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
@@ -38,13 +39,24 @@ export class WorldScene {
 
     update(ratio, keyboard, mouse) {
         if (this.isMyTurn()) {
+            let option = false;
             for (let i=0; i < this.cards.length; i++) {
-                this.cards[i].update(ratio, keyboard, mouse, function(self) { self.playCard(self, self.cards[i]) }, this);
+                if (this.legalMove(this.cards[i])) {
+                    option = true;
+                    this.cards[i].update(ratio, keyboard, mouse, function(self) { self.playCard(self, self.cards[i]) }, this);
+                }
+            }
+            if (!option && this.hasPickedUp) {
+                this.turnDisplay.text = "You're forced to pass!";
+                this.emptyPile(this);
+                this.endTurn(this);
+                this.turn++;
             }
             if (!this.hasPickedUp) {
                 this.facedown.update(ratio, keyboard, mouse, this.pickupCard, this);
             }
-        } else if (this.game.timer[0] == 0.0) {
+        } else if (this.game.timer[0] == 0.0 && this.loading == false) {
+            this.loading = true;
             this.game.setTimer(600.0, this.syncWithServer, this);
         }
         for (let card of this.cards) {
@@ -105,10 +117,7 @@ export class WorldScene {
 
     playCard(self, card) {
         self.turn++;
-        for (let pcard of self.pile) {
-            self.underpile.push(pcard);
-        }
-        self.pile = [];
+        self.emptyPile(self);
         // search for other cards of the same rank
         for (let othercard of self.cards) {
             if (othercard.rank === card.rank) {
@@ -121,7 +130,15 @@ export class WorldScene {
         self.cards = self.cards.filter(othercard => othercard.rank != card.rank || othercard.suit != card.suit);
         self.pile.push(card);
         self.adjustCardPos(self);
+        self.turnDisplay.text = "sending cards";
         self.endTurn(self);
+    }
+
+    emptyPile(self) {
+        for (let pcard of self.pile) {
+            self.underpile.push(pcard);
+        }
+        self.pile = [];
     }
 
     adjustCardPos(self) {
@@ -147,7 +164,6 @@ export class WorldScene {
     }
 
     endTurn(self) {
-        self.turnDisplay.text = "sending cards";
         fetch(
             `${SERVER}/update`, {
 			    method: "POST",
@@ -190,7 +206,11 @@ export class WorldScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
-                if (data === null) {return}
+                if (data === null) {
+                    self.turnDisplay.text - "Error contacting server";
+                    self.loading = false;
+                    return
+                }
                 let new_pile = JSON.parse(data["pile"]);
                 let turn = data["turn"];
                 if (self.isMyTurn(turn)) {
@@ -201,6 +221,8 @@ export class WorldScene {
                         return
                     }
                     self.startNextTurn(self, turn, new_pile);
+                } else {
+                    self.loading = false;
                 }
             }
         )
@@ -218,8 +240,19 @@ export class WorldScene {
         for (let i=0; i < new_pile.length - 1; i++) {
             self.pile.push(new Card(new_pile[i][0], new_pile[i][1], played_cards[i].x, played_cards[i].y - 135));
         }
-        self.adjustCardPos(self);
+        self.adjustCardPos(self)
         self.turn = turn;
+        self.loading = false;
+    }
+
+    legalMove(card) {
+        let pile;
+        if (this.pile.length > 0) {
+            pile = this.pile[this.pile.length - 1];
+        } else {
+            pile = this.underpile[this.underpile.length - 1];
+        }
+        return (card.rank == 8) || (card.rank == pile.rank) || (card.suit == pile.suit)
     }
 }
 

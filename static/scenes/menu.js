@@ -69,7 +69,7 @@ export class MenuScene {
     }
 
     submitJoinRequest(self) {
-        if (self.loading) {return}
+        if (self.loading || self.inputbox.value.length < 4) {return}
         self.loading = true;
         fetch(
             `${SERVER}/joinroom`, {
