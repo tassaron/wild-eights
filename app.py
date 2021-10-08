@@ -167,7 +167,14 @@ def joinroom():
     rooms[data].uid2 = uuid4()
     rooms[data].createDeck()
     cards = rooms[data].takeCards(9)
-    rooms[data].pile = flask.json.dumps([cards.pop()])
+    firstcard = cards.pop()
+    if firstcard[1] == 2:
+        rooms[data].pickedUp = 1
+        rooms[data].pickedUpNum = 2
+    elif firstcard == (0, 12):
+        rooms[data].pickedUp = 1
+        rooms[data].pickedUpNum = 5
+    rooms[data].pile = flask.json.dumps([firstcard])
     response = flask.make_response(
         {
             "rid": rooms[data].rid,

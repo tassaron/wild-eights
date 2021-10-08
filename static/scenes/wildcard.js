@@ -30,6 +30,6 @@ export class WildcardScene {
     selectSuit(self, suit) {
         self.card.wildcardSuit = suit;
         self.game.changeScene(self.game.prevScene);
-        self.game.setTimer(1.0, function(self) {self.game.scene.playCard(self.game.scene, self.card)}, self);
+        self.game.scene.playCard(self.game.scene, self.card)
     }
 }

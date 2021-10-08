@@ -6,7 +6,7 @@ export class GameOverScene {
         this.win = win;
         game.game_over = true;
         game.timer[1] = function(){};
-        this.cooldown = 600.0;
+        this.cooldown = 300.0;
     }
 
     update(ratio, keyboard, mouse) {

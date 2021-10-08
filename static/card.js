@@ -55,7 +55,7 @@ export class Card extends CardBase{
     draw(ctx, drawSprite) {
         drawSprite.card(this._suit, this.rank, Math.floor(this._x), Math.floor(this._y));
         if (this.wildcardSuit != null) {
-            drawSprite.suit(this.wildcardSuit, this.x - 100, this.y + 45);
+            drawSprite.suit(this.wildcardSuit, 205, 350);
         }
     }
 }

@@ -55,7 +55,7 @@ export class MenuScene {
         self.inputbox.setAttribute("id", "field");
         self.inputbox.setAttribute(
             "style",
-            "position: absolute; bottom: 320px; left: 356px;" 
+            "position: absolute; bottom: 286px; left: 324px; width: 256px; height: 48px; box-sizing: border-box; text-transform: uppercase; text-align: center;" 
         )
         self.inputlabel = document.createElement("label");
         self.inputlabel.setAttribute("for", "field");

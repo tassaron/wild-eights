@@ -9,7 +9,7 @@ const SERVER = "";
 export class WorldScene {
     constructor(game, rid, odd_turns, uid, cards, pile, pickedUp, pickedUpNum, turn=1, wildcardSuit=null) {
         this.loading = false;
-        this.turnDisplay = new TurnDisplay(game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
+        this.turnDisplay = new TurnDisplay(game, game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
         this.rid = rid;
@@ -18,10 +18,10 @@ export class WorldScene {
         this.cards = cards.map(card => new Card(card[0], card[1], 605, 305));
         pile = JSON.parse(pile);
         this.ocards = [];
-        for (let i = 0; i < 8 - (turn == 1 ? 0 : pile.length + (pickedUp ? pickedUpNum : 0) + countTwos(pile)*2); i++) {
+        for (let i = 0; i < (8 - (turn == 1 ? 0 : pile.length)); i++) {
             this.ocards.push(new OCard(605, 305 + 135));
         }
-        if (pickedUp == 1) {
+        if (pickedUp) {
             for (let i = 0; i < pickedUpNum; i++) {
                 this.ocards.push(new OCard(605, 305 + 135))
             }
@@ -41,9 +41,12 @@ export class WorldScene {
         }
         this.hasPickedUp = false;
         this.skippedTurn = false;
-        this.pile[this.pile.length-1].wildcardSuit = wildcardSuit;
-        let twosInPile = countTwos(this.pile);
-        if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
+        if (this.pile.length > 0) {this.pile[this.pile.length-1].wildcardSuit = wildcardSuit}
+        if (turn == 1 && this.odd_turns) {
+            let twosInPile = countTwos(this.pile);
+            if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
+            if (queenOfSpades(this.pile)) {this.pickupCards(this, 5, turn)}
+        }
     }
 
     update(ratio, keyboard, mouse) {
@@ -91,7 +94,6 @@ export class WorldScene {
 
     draw(ctx, drawSprite) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        this.turnDisplay.draw(ctx, drawSprite);
         this.facedown.draw(ctx, drawSprite);
         for (let card of this.cards) {
             card.draw(ctx, drawSprite);
@@ -105,6 +107,7 @@ export class WorldScene {
         for (let card of this.pile) {
             card.draw(ctx, drawSprite);
         }
+        this.turnDisplay.draw(ctx, drawSprite);
     }
 
     pickupCard(self) {
@@ -201,6 +204,11 @@ export class WorldScene {
         for (let i = 0; i < twosInPile; i++) {
             self.ocards.push(new OCard(605, 305 + 135));
         }
+        if (queenOfSpades(self.pile)) {
+            for (let i = 0; i < 5; i++) {
+                self.ocards.push(new OCard(605, 305 + 135));
+            }
+        }
         self.adjustCardPos(self);
         if (card.rank == 11) {
             self.skippedTurn = true;
@@ -276,12 +284,13 @@ export class WorldScene {
                     return
                 }
                 self.turnDisplay.text = "waiting for the other player...";
-                self.game.setTimer(600.0, self.syncWithServer, self);
+                self.game.setTimer(1000.0, self.syncWithServer, self);
             }
         )
     }
 
     syncWithServer(self) {
+        self.turnDisplay.text = "contacting server...";
         fetch(
             `${SERVER}/refresh`, {
 			    method: "POST",
@@ -317,6 +326,7 @@ export class WorldScene {
                     }
                     self.startNextTurn(self, turn, new_pile, data["wildcardSuit"]);
                 } else {
+                    self.turnDisplay.text = "waiting for the other player...";
                     self.loading = false;
                 }
             }
@@ -346,6 +356,10 @@ export class WorldScene {
             self.pickupCards(self, twosInPile*2, turn);
             return
         }
+        if (queenOfSpades(self.pile)) {
+            self.pickupCards(self, 5, turn)
+            return
+        }
         if (self.ocards.length == 0) {
             self.game.changeScene(new GameOverScene(self.game, false));
             self.turnDisplay.text = ":(";
@@ -368,9 +382,10 @@ export class WorldScene {
 }
 
 class TurnDisplay extends Thing {
-    constructor(x, y) {
+    constructor(game, x, y) {
         super(x, y, 0, 0);
         this.text = "You play first!";
+        this.game = game;
     }
 
     draw(ctx, drawSprite) {
@@ -379,6 +394,8 @@ class TurnDisplay extends Thing {
         ctx.fillRect((this.x - width) - 8, this.y - 24, width + 16, 32);
         ctx.fillStyle = "white";
         ctx.fillRect((this.x - width) - 6, this.y - 22, width + 12, 28);
+        ctx.fillStyle = `rgba(135, 206, 250, ${this.game.timer[0] <= 0.0 ? 0.0 : Math.min(1.0, 1.0 - (this.game.timer[0] / 600.0)) * 1.0})`;
+        ctx.fillRect((this.x - width) - 6, this.y - 22, this.game.timer[0] <= 0.0 ? 0 : Math.floor(Math.min(1.0, (this.game.timer[0] / 600.0)) * (width + 12)), 28);
         ctx.fillStyle = "black";
         ctx.font = "16pt Sans";
         ctx.fillText(this.text, this.x - width, this.y);
@@ -399,4 +416,11 @@ function countTwos(pile) {
         if (card.rank == 2) {count++}
     }
     return count
+}
+
+function queenOfSpades(pile) {
+    for (let card of pile) {
+        if (card.suit == 0 && card.rank == 12) {return true}
+    }
+    return false
 }
