@@ -1,5 +1,6 @@
 import { LobbyScene } from "./lobby.js";
 import { Button } from "../button.js";
+import { Thing } from "../thing.js";
 
 const SERVER = "";
 const gamediv = document.getElementById("game");
@@ -12,6 +13,13 @@ export class MenuScene {
         this.inputbox = null;
         this.inputlabel = null;
         this.loading = false;
+        this.decorations = [
+            new DecorativeCard(0, 205, 205),
+            new DecorativeCard(1, 705, 205),
+            new DecorativeCard(2, 205, 705),
+            new DecorativeCard(3, 705, 705)
+        ]
+        game.ctx.clearRect(0, 0, game.ctx.canvas.width, game.ctx.canvas.height);
     }
 
     update(ratio, keyboard, mouse) {
@@ -20,14 +28,33 @@ export class MenuScene {
         if (keyboard.enter && this.inputbox !== null) {
             this.submitJoinRequest(this);
         }
+        for (let decor of this.decorations) {
+            decor.update(ratio, keyboard, mouse);
+            for (let otherdecor of this.decorations) {
+                if (otherdecor.x == decor.x) {continue}
+                if (Thing.prototype.collides.call(decor, otherdecor)) {
+                    if (Math.abs(decor.x - otherdecor.x) > Math.abs(decor.y - otherdecor.y)) {
+                        decor.dx = decor.x - otherdecor.x < 0 ? -2 : 2;
+                    } else {
+                        decor.dy = decor.y - otherdecor.y < 0 ? -2 : 2;
+                    }
+                }
+            }
+        }
     }
 
     draw(ctx, drawSprite) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.fillStyle = "black";
-        ctx.font = "36pt sans";
+        for (let decor of this.decorations) {
+            decor.draw(ctx, drawSprite);
+        }
         let text = "Wild Eights";
-        ctx.fillText(text, this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2), this.newbutton.y - 28);
+        ctx.font = "48pt sans";
+        ctx.fillStyle = "black";
+        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2) - 4, this.newbutton.y - 96, ctx.measureText(text).width + 8, 78);
+        ctx.fillStyle = "white";
+        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2) - 2, this.newbutton.y - 94, ctx.measureText(text).width + 4, 74);
+        ctx.fillStyle = "black";
+        ctx.fillText(text, this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2), this.newbutton.y - 38);
         this.newbutton.draw(ctx, drawSprite);
         this.joinbutton.draw(ctx, drawSprite);
     }
@@ -107,5 +134,36 @@ class JoinGameButton extends Button {
         let colour = "rgba(55, 95, 145, 1.0)";
         super(x, y, 256, 48, "Join Game", outline, colour);
         this.game = game;
+    }
+}
+
+class DecorativeCard {
+    constructor(s, x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 90;
+        this.height = 135;
+        this.suit = s;
+        this.dx = Math.random() > 0.5 ? -2 : 2;
+        this.dy = Math.random() > 0.5 ? -2 : 2;
+    }
+
+    update(ratio, keyboard, mouse) {
+        if (this.x > 900) {
+            this.dx = -2;
+        } else if (this.x < 0) {
+            this.dx = 2;
+        }
+        if (this.y > 900) {
+            this.dy = -2;
+        } else if (this.y < 0) {
+            this.dy = 2;
+        }
+        this.y += ratio * this.dy;
+        this.x += ratio * this.dx;
+    }
+
+    draw(ctx, drawSprite) {
+        drawSprite.card(this.suit, 8, this.x, this.y);
     }
 }
