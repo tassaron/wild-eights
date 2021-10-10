@@ -81,7 +81,10 @@ export class MenuScene {
         ).then(
             response => response.ok ? response.json() : null
         ).then(
-            data => self.game.changeScene(new LobbyScene(data))
+            function(data) {
+                self.game.changeScene(new LobbyScene(self.game, data));
+                self.loading = false;
+            }
         )
     }
 
@@ -124,7 +127,7 @@ export class MenuScene {
             data => {
                 gamediv.removeChild(self.inputbox);
                 gamediv.removeChild(self.inputlabel);
-                self.game.changeScene(new LobbyScene(data))}
+                self.game.changeScene(new LobbyScene(self.game, data))}
         )
     }
 

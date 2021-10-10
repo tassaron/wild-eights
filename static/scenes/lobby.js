@@ -1,9 +1,10 @@
 import { WorldScene } from "./world.js";
+import { Button } from "../button.js";
 
 const SERVER = "";
 
 export class LobbyScene {
-    constructor(data) {
+    constructor(game, data) {
         this.drawn = false;
         if (data === null) {return}
         this.rid = data["rid"];
@@ -17,6 +18,7 @@ export class LobbyScene {
         // uid2 will be the first to enter WorldScene so they go first
         this.odd_turns = data["uid2"] === null ? false : true;
         this.loading = false;
+        this.backbutton = new BackButton((game.ctx.canvas.width / 2) - 128, (game.ctx.canvas.height / 2) + 128);
     }
 
     update(ratio, keyboard, mouse) {
@@ -26,6 +28,7 @@ export class LobbyScene {
             this.game.setTimer(600.0, this.syncWithServer, this);
             this.loading = true;
         }
+        this.backbutton.update(ratio, keyboard, mouse, this.goBack, this);
     }
 
     draw(ctx, drawSprite) {
@@ -41,6 +44,7 @@ export class LobbyScene {
             text = `Room Code: ${this.rid}`;
         }
         ctx.fillText(text, ctx.canvas.width/2-(ctx.measureText(text).width/2), ctx.canvas.height/2);
+        this.backbutton.draw(ctx, drawSprite);
         this.drawn = true;
     }
 
@@ -67,5 +71,18 @@ export class LobbyScene {
                 self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
             }
         )
+    }
+
+    goBack(self) {
+        self.game.changeScene(self.game.prevScene);
+        self.game.ctx.clearRect(0, 0, 900, 900);
+    }
+}
+
+class BackButton extends Button {
+    constructor(x, y) {
+        let outline = "black";
+        let colour = "rgb(55, 95, 145)";
+        super(x, y, 256, 48, "← Back", outline, colour);
     }
 }
