@@ -1,5 +1,5 @@
 /* Primary game scene in which the game actually occurs!! */
-import { Thing } from "../thing.js";
+import { SpriteThing } from "../thing.js";
 import { Card, Cardback, OCard } from "../card.js";
 import { WildcardScene } from "./wildcard.js";
 import { GameOverScene } from "./gameover.js";
@@ -381,7 +381,7 @@ export class WorldScene {
     }
 }
 
-class TurnDisplay extends Thing {
+class TurnDisplay extends SpriteThing {
     constructor(game, x, y) {
         super(x, y, 0, 0);
         this.text = "You play first!";

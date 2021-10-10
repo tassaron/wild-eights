@@ -1,11 +1,12 @@
-class CardBase {
+import { CollidableThing } from "./thing.js";
+
+class CardBase extends CollidableThing {
     constructor(x, y) {
+        super(x, y, 90, 135);
         this._x = x;
         this._y = y;
         this.xDest = x;
         this.yDest = y;
-        this.width = 90;
-        this.height = 135;
         this.cooldown = 0.0;
     }
 
@@ -27,10 +28,6 @@ class CardBase {
         } else if (this.cooldown > 0.0) {
             this.cooldown -= ratio;
         }
-    }
-
-    collides(other) {
-        return (this.x + this.width > other.x && this.x < other.x + other.width && other.y + other.height > this.y && other.y < this.y + this.height);
     }
 
     travel(ratio) {

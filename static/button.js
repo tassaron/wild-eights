@@ -1,6 +1,6 @@
-import { Thing } from "./thing.js";
+import { SpriteThing } from "./thing.js";
 
-export class Button extends Thing {
+export class Button extends SpriteThing {
     constructor(x, y, w, h, text, outline="#000", colour="#fff") {
         super(x, y, w, h);
         this.text = text;

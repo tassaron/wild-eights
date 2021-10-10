@@ -1,6 +1,6 @@
-import { Thing } from "./thing.js";
+import { SpriteThing } from "./thing.js";
 
-export class Suit extends Thing {
+export class Suit extends SpriteThing {
     constructor(s, x, y) {
         super(x, y, 54, 54);
         this.suit = s;

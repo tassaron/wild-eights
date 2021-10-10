@@ -24,7 +24,8 @@ let preloaded = 0;
 
 let sprites = {
     "cards": new Image(),
-    "suits": new Image()
+    "suits": new Image(),
+    "help": new Image()
 }
 
 const drawSprite = {
@@ -54,6 +55,23 @@ const drawSprite = {
         ctx.fill();
         ctx.closePath();
         ctx.drawImage(sprites.suits, (54 * s)-1, 0, 54, 54, x, y, 54, 54);
+    },
+    help: function(i, x, y) {
+        let yc;
+        switch(i) {
+            case 0:
+                yc = 0;
+                break;
+            case 1:
+                yc = 81;
+                break;
+            case 2:
+                yc = 162;
+                break;
+            case 3:
+                yc = 243;
+        }
+        ctx.drawImage(sprites.help, 0, yc, 552, 80, x, y, 552, 81)
     }
 };
 
@@ -70,6 +88,8 @@ sprites.cards.addEventListener("load", preload_success)
 sprites.cards.src = "static/assets/cards.png";
 sprites.suits.addEventListener("load", preload_success)
 sprites.suits.src = "static/assets/suits.png";
+sprites.help.addEventListener("load", preload_success)
+sprites.help.src = "static/assets/help.png";
 
 function loop() {
     game.update(keyboard, mouse);
