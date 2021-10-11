@@ -114,27 +114,34 @@ export class WorldScene {
         self.turnDisplay.text = "asking server for a card...";
         fetch(
             `${SERVER}/newcard`, {
-			    method: "POST",
-			    credentials: "same-origin",
- 			    body: JSON.stringify({
+                method: "POST",
+                credentials: "same-origin",
+                body: JSON.stringify({
                     "rid": self.rid,
                     "uid": self.uid,
                     "number": 1
                 }),
-			    cache: "no-cache",
-			    headers: new Headers({
-				    "content-type": "application/json"
-			    })
+                cache: "no-cache",
+                headers: new Headers({
+                    "content-type": "application/json"
+                })
             }
         ).then(
             response => response.ok ? response.json() : null
         ).then(
             data => {
+                if (data === null) {
+                    self.turnDisplay.text = "Error contacting server";
+                    self.loading = false;
+                    return
+                }
                 self.turnDisplay.text = "Still your turn!";
                 self.cards.push(new Card(data["cards"][0][0], data["cards"][0][1], 605, 305));
                 self.hasPickedUp = true;
                 self.adjustCardPos(self);
             }
+        ).catch(
+            e => self.turnDisplay.text = e.message
         )
     }
 
@@ -142,22 +149,27 @@ export class WorldScene {
         self.turnDisplay.text = `asking server for ${number} cards...`;
         fetch(
             `${SERVER}/newcard`, {
-			    method: "POST",
-			    credentials: "same-origin",
- 			    body: JSON.stringify({
+                method: "POST",
+                credentials: "same-origin",
+                body: JSON.stringify({
                     "rid": self.rid,
                     "uid": self.uid,
                     "number": number
                 }),
-			    cache: "no-cache",
-			    headers: new Headers({
-				    "content-type": "application/json"
-			    })
+                cache: "no-cache",
+                headers: new Headers({
+                    "content-type": "application/json"
+                })
             }
         ).then(
             response => response.ok ? response.json() : null
         ).then(
             data => {
+                if (data === null) {
+                    self.turnDisplay.text = "Error contacting server";
+                    self.loading = false;
+                    return
+                }
                 for (let card of data["cards"]) {
                     self.cards.push(new Card(card[0], card[1], 605, 305));
                 }
@@ -166,6 +178,8 @@ export class WorldScene {
                 self.loading = false;
                 self.turnDisplay.text = `Picked up ${number} cards. Your turn!`;
             }
+        ).catch(
+            e => self.turnDisplay.text = e.message
         )
     }
 
@@ -263,18 +277,23 @@ export class WorldScene {
         }
         fetch(
             `${SERVER}/update`, {
-			    method: "POST",
-			    credentials: "same-origin",
- 			    body: JSON.stringify(request),
-			    cache: "no-cache",
-			    headers: new Headers({
-				    "content-type": "application/json"
-			    })
+                method: "POST",
+                credentials: "same-origin",
+                body: JSON.stringify(request),
+                cache: "no-cache",
+                headers: new Headers({
+                    "content-type": "application/json"
+                })
             }
         ).then(
             response => response.ok ? response.json() : null
         ).then(
             data => {
+                if (data === null) {
+                    self.turnDisplay.text = "Error contacting server";
+                    self.loading = false;
+                    return
+                }
                 for (let i = 1; i < self.pile.length-1; i++) {
                     self.underpile[self.underpile.length-i].wildcardSuit = null;
                 }
@@ -286,6 +305,8 @@ export class WorldScene {
                 self.turnDisplay.text = "waiting for the other player...";
                 self.game.setTimer(1000.0, self.syncWithServer, self);
             }
+        ).catch(
+            e => self.turnDisplay.text = e.message
         )
     }
 
@@ -293,23 +314,23 @@ export class WorldScene {
         self.turnDisplay.text = "contacting server...";
         fetch(
             `${SERVER}/refresh`, {
-			    method: "POST",
-			    credentials: "same-origin",
- 			    body: JSON.stringify({
+                method: "POST",
+                credentials: "same-origin",
+                body: JSON.stringify({
                     "rid": self.rid,
                     "uid": self.uid
                 }),
-			    cache: "no-cache",
-			    headers: new Headers({
-				    "content-type": "application/json"
-			    })
+                cache: "no-cache",
+                headers: new Headers({
+                    "content-type": "application/json"
+                })
             }
         ).then(
             response => response.ok ? response.json() : null
         ).then(
             data => {
                 if (data === null) {
-                    self.turnDisplay.text - "Error contacting server";
+                    self.turnDisplay.text = "Error contacting server";
                     self.loading = false;
                     return
                 }
@@ -330,6 +351,8 @@ export class WorldScene {
                     self.loading = false;
                 }
             }
+        ).catch(
+            e => self.turnDisplay.text = e.message
         )
     }
 

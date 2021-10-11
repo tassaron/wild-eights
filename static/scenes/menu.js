@@ -9,6 +9,7 @@ const gamediv = document.getElementById("game");
 export class MenuScene {
     constructor(game) {
         this.game = game;
+        this.title = "Wild Eights";
         this.newbutton = new NewGameButton(game.ctx.canvas.width / 2 - 128, game.ctx.canvas.height / 2 - 64);
         this.joinbutton = new JoinGameButton(game.ctx.canvas.width / 2 - 128, game.ctx.canvas.height / 2);
         this.tutorialbutton = new TutorialButton(game.ctx.canvas.width - 128, game.ctx.canvas.height - 128);
@@ -59,14 +60,13 @@ export class MenuScene {
         for (let decor of this.decorations) {
             decor.draw(ctx, drawSprite);
         }
-        let text = "Wild Eights";
         ctx.font = "48pt Sans";
         ctx.fillStyle = "black";
-        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2) - 4, this.newbutton.y - 96, ctx.measureText(text).width + 8, 78);
+        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(this.title).width/2) - 4, this.newbutton.y - 96, ctx.measureText(this.title).width + 8, 78);
         ctx.fillStyle = "white";
-        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2) - 2, this.newbutton.y - 94, ctx.measureText(text).width + 4, 74);
+        ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(this.title).width/2) - 2, this.newbutton.y - 94, ctx.measureText(this.title).width + 4, 74);
         ctx.fillStyle = "black";
-        ctx.fillText(text, this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2), this.newbutton.y - 38);
+        ctx.fillText(this.title, this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(this.title).width/2), this.newbutton.y - 38);
         this.newbutton.draw(ctx, drawSprite);
         this.joinbutton.draw(ctx, drawSprite);
         this.tutorialbutton.draw(ctx, drawSprite);
@@ -85,6 +85,8 @@ export class MenuScene {
                 self.game.changeScene(new LobbyScene(self.game, data));
                 self.loading = false;
             }
+        ).catch(
+            e => self.title = "Wild Errors"
         )
     }
 
@@ -129,6 +131,8 @@ export class MenuScene {
                 self.loading = false;
                 self.removeInputBox(self);
                 self.game.changeScene(new LobbyScene(self.game, data))}
+        ).catch(
+            e => self.title = "Wild Errors"
         )
     }
 

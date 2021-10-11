@@ -82,6 +82,8 @@ export class LobbyScene {
                 // uid2 has connected!!
                 self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
             }
+        ).catch(
+            e => self.goBack(self)
         )
     }
 
