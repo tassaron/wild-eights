@@ -31,6 +31,9 @@ class GameRoom:
         self.pickedUp = 0
         self.pickedUpNum = 0
         self.wildcardSuit = None
+        # string repr of a list of tuples
+        self._pile = None
+        self.shuffleable = []
 
     def createDeck(self):
         self.deck = []
@@ -55,10 +58,26 @@ class GameRoom:
     def takeCards(self, num):
         returnval = []
         for _ in range(num):
-            ch = random.choice(self.deck)
+            try:
+                ch = random.choice(self.deck)
+            except IndexError:
+                print("shuffle")
+                random.shuffle(self.shuffleable)
+                self.deck = self.shuffleable
+                self.shuffleable = []
+                ch = random.choice(self.deck)
             returnval.append(ch)
             self.deck.remove(ch)
         return returnval
+
+    @property
+    def pile(self):
+        return self._pile
+
+    @pile.setter
+    def pile(self, val):
+        self.shuffleable.extend([] if self._pile is None else flask.json.loads(self._pile))
+        self._pile = val
 
 
 def is_valid(gamestate):
@@ -84,6 +103,7 @@ def newcard():
         else:
             room.pickedUp = room.turn
             room.pickedUpNum = 1
+    print(room.pickedUpNum)
     return { "cards": room.takeCards(number) }, 200
 
 

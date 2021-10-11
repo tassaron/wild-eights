@@ -6,6 +6,7 @@ const SERVER = "";
 export class LobbyScene {
     constructor(game, data) {
         this.drawn = false;
+        this.backbutton = new BackButton((game.ctx.canvas.width / 2) - 128, (game.ctx.canvas.height / 2) + 128);
         if (data === null) {return}
         this.rid = data["rid"];
         this.uid1 = data["uid1"];
@@ -18,13 +19,12 @@ export class LobbyScene {
         // uid2 will be the first to enter WorldScene so they go first
         this.odd_turns = data["uid2"] === null ? false : true;
         this.loading = false;
-        this.backbutton = new BackButton((game.ctx.canvas.width / 2) - 128, (game.ctx.canvas.height / 2) + 128);
     }
 
     update(ratio, keyboard, mouse) {
         if (this.uid2) {
             this.game.changeScene(new WorldScene(this.game, this.rid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile, this.pickedUp, this.pickedUpNum));
-        } else if (this.game.timer[0] == 0.0 && !this.loading) {
+        } else if (this.uid1 && this.game.timer[0] == 0.0 && !this.loading) {
             this.game.setTimer(600.0, this.syncWithServer, this);
             this.loading = true;
         }
@@ -35,15 +35,27 @@ export class LobbyScene {
         if (this.drawn) {return}
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.clearRect(200, 200, 500, 500);
         ctx.fillStyle = "white";
-        ctx.font = "28pt Sans";
-        let text;
+        let text1, text2;
         if (!this.rid) {
-            text = "Could not connect to server"
+            text1 = "Could not connect to server";
+            text2 = "";
         } else {
-            text = `Room Code: ${this.rid}`;
+            text1 = "Room Code:"
+            text2 = `${this.rid[0]} ${this.rid[1]} ${this.rid[2]} ${this.rid[3]}`;
         }
-        ctx.fillText(text, ctx.canvas.width/2-(ctx.measureText(text).width/2), ctx.canvas.height/2);
+        ctx.font = "28pt Sans";
+        ctx.fillText(text1, ctx.canvas.width/2-(ctx.measureText(text1).width/2), (ctx.canvas.height/2) - 64);
+        ctx.font = "48pt Sans";
+        ctx.fillStyle = "black";
+        ctx.fillText(text2, ctx.canvas.width/2-(ctx.measureText(text2).width/2) - 2, ctx.canvas.height/2);
+        ctx.fillText(text2, ctx.canvas.width/2-(ctx.measureText(text2).width/2) + 2, ctx.canvas.height/2);
+        ctx.fillText(text2, ctx.canvas.width/2-(ctx.measureText(text2).width/2), (ctx.canvas.height/2) - 2);
+        ctx.fillText(text2, ctx.canvas.width/2-(ctx.measureText(text2).width/2), (ctx.canvas.height/2) + 2);
+        ctx.font = "48pt Sans";
+        ctx.fillStyle = "white";
+        ctx.fillText(text2, ctx.canvas.width/2-(ctx.measureText(text2).width/2), ctx.canvas.height/2);
         this.backbutton.draw(ctx, drawSprite);
         this.drawn = true;
     }

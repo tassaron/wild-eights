@@ -315,7 +315,7 @@ export class WorldScene {
                 }
                 let new_pile = JSON.parse(data["pile"]);
                 let turn = data["turn"];
-                if (self.isMyTurn(turn)) {
+                if (self.isMyTurn(turn) && self.turn != turn) {
                     if (data["pickedUp"]) {
                         for (let i = 0; i < data["pickedUpNum"]; i++) {
                             self.ocards.push(new OCard(605, 305 + 135))

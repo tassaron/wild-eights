@@ -60,7 +60,7 @@ export class MenuScene {
             decor.draw(ctx, drawSprite);
         }
         let text = "Wild Eights";
-        ctx.font = "48pt sans";
+        ctx.font = "48pt Sans";
         ctx.fillStyle = "black";
         ctx.fillRect(this.newbutton.x + (this.newbutton.width/2) - (ctx.measureText(text).width/2) - 4, this.newbutton.y - 96, ctx.measureText(text).width + 8, 78);
         ctx.fillStyle = "white";
@@ -93,6 +93,7 @@ export class MenuScene {
         self.inputbox = document.createElement("input");
         self.inputbox.setAttribute("type", "text");
         self.inputbox.setAttribute("id", "field");
+        self.inputbox.setAttribute("maxlength", "4");
         self.inputbox.setAttribute(
             "style",
             "position: absolute; bottom: 286px; left: 324px; width: 256px; height: 48px; box-sizing: border-box; text-transform: uppercase; text-align: center;" 
@@ -125,8 +126,8 @@ export class MenuScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
-                gamediv.removeChild(self.inputbox);
-                gamediv.removeChild(self.inputlabel);
+                self.loading = false;
+                self.removeInputBox(self);
                 self.game.changeScene(new LobbyScene(self.game, data))}
         )
     }
