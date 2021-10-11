@@ -1,19 +1,16 @@
 import flask
-import os
 import random
-import logging
+import os
 from uuid import uuid4
 from string import ascii_uppercase
+from itsdangerous import URLSafeSerializer, BadSignature
+
 
 app = flask.Flask(__name__)
-#app.secret_key = os.urandom(16)
-LOG = logging.getLogger(__name__)
-#app.config.update(
-#    SESSION_COOKIE_SECURE=True,
-#    SESSION_COOKIE_HTTPONLY=True,
-#    SESSION_COOKIE_SAMESITE="Lax",
-#)
+app.secret_key = os.urandom(16)
+serializer = URLSafeSerializer(app.secret_key)
 rooms = {}
+
 
 class GameRoom:
     @classmethod
@@ -25,7 +22,7 @@ class GameRoom:
 
     def __init__(self):
         self.rid = GameRoom.new_room()
-        self.uid1 = uuid4()
+        self.uid1 = uuid4().hex
         self.uid2 = None
         self.turn = 1
         self.pickedUp = 0
@@ -61,7 +58,6 @@ class GameRoom:
             try:
                 ch = random.choice(self.deck)
             except IndexError:
-                print("shuffle")
                 random.shuffle(self.shuffleable)
                 self.deck = self.shuffleable
                 self.shuffleable = []
@@ -80,10 +76,6 @@ class GameRoom:
         self._pile = val
 
 
-def is_valid(gamestate):
-    return True
-
-
 def four_letter_code():
     return "".join([random.choice(ascii_uppercase) for _ in range(4)])
 
@@ -91,11 +83,15 @@ def four_letter_code():
 @app.route("/newcard", methods=["POST"])
 def newcard():
     data = flask.request.get_json()
-    room = rooms[data["rid"]]
     try:
+        room = rooms[data["rid"]]
         number = int(data["number"])
-    except ValueError:
+        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
+            flask.abort(401)
+    except (ValueError, KeyError):
         flask.abort(400)
+    except BadSignature:
+        flask.abort(401)
     if number == 1:
         # this property represents when singular cards are picked up voluntarily
         if room.pickedUp == room.turn:
@@ -103,7 +99,6 @@ def newcard():
         else:
             room.pickedUp = room.turn
             room.pickedUpNum = 1
-    print(room.pickedUpNum)
     return { "cards": room.takeCards(number) }, 200
 
 
@@ -113,13 +108,13 @@ def refreshlobby():
     data = flask.request.get_json()
     try:
         room = rooms[data["rid"]]
-        if data["uid"] != str(room.uid1):
+        if serializer.loads(data["uid"]) != room.uid1:
             flask.abort(401)
         if room.uid2 is None:
             return { "uid": None }, 200
         else:
             return {
-                "uid": room.uid2,
+                "uid": serializer.dumps(room.uid2),
                 "cards": room.takeCards(8),
                 "pile": room.pile,
                 "pickedUp": room.pickedUp == room.turn - 1,
@@ -129,12 +124,21 @@ def refreshlobby():
             }, 200
     except KeyError:
         flask.abort(400)
+    except BadSignature:
+        flask.abort(401)
 
 
 @app.route("/refresh", methods=["POST"])
 def refreshgame():
     data = flask.request.get_json()
-    room = rooms[data["rid"]]
+    try:
+        room = rooms[data["rid"]]
+        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
+            flask.abort(401)
+    except KeyError:
+        flask.abort(400)
+    except BadSignature:
+        flask.abort(401)
     resp = {
         "rid": room.rid,
         "turn": room.turn,
@@ -149,14 +153,18 @@ def refreshgame():
 @app.route("/update", methods=["POST"])
 def updategame():
     data = flask.request.get_json()
-    room = rooms[data["rid"]]
-    room.pile = data["pile"]
-    room.wildcardSuit = data["wildcardSuit"]
     try:
+        room = rooms[data["rid"]]
+        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
+            flask.abort(401)
+        room.pile = data["pile"]
+        room.wildcardSuit = data["wildcardSuit"]
         if room.pile[0][1] != 11:
             room.turn += 1
-    except IndexError:
+    except (KeyError, IndexError):
         room.turn += 1
+    except BadSignature:
+        flask.abort(401)
     return {}, 200
 
 
@@ -166,7 +174,7 @@ def newroom():
     response = flask.make_response(
         {
             "rid": new_room.rid,
-            "uid1": new_room.uid1,
+            "uid1": serializer.dumps(new_room.uid1),
             "uid2": None,
         },
         200,
@@ -184,7 +192,7 @@ def joinroom():
             flask.abort(400)
     if data not in rooms.keys():
         flask.abort(404)
-    rooms[data].uid2 = uuid4()
+    rooms[data].uid2 = uuid4().hex
     rooms[data].createDeck()
     cards = rooms[data].takeCards(9)
     firstcard = cards.pop()
@@ -198,8 +206,8 @@ def joinroom():
     response = flask.make_response(
         {
             "rid": rooms[data].rid,
-            "uid1": rooms[data].uid1,
-            "uid2": rooms[data].uid2,
+            "uid1": serializer.dumps(rooms[data].uid1),
+            "uid2": serializer.dumps(rooms[data].uid2),
             "cards": cards,
             "pile": rooms[data].pile,
         },
