@@ -9,7 +9,14 @@ from ast import literal_eval
 
 
 app = flask.Flask(__name__)
-app.secret_key = os.urandom(16)
+try:
+    with open("key.sav", "rb") as f:
+        key = f.read(16)
+except FileNotFoundError:
+    key = os.urandom(16)
+    with open("key.sav", "wb") as f:
+        f.write(key)
+app.secret_key = key
 serializer = URLSafeSerializer(app.secret_key)
 
 

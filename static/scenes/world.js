@@ -131,7 +131,7 @@ export class WorldScene {
         ).then(
             data => {
                 if (data === null) {
-                    self.turnDisplay.text = "Error contacting server";
+                    self.turnDisplay.text = "Error contacting server. Retrying...";
                     self.loading = false;
                     return
                 }
@@ -141,7 +141,10 @@ export class WorldScene {
                 self.adjustCardPos(self);
             }
         ).catch(
-            e => self.turnDisplay.text = e.message
+            function(e) {
+                self.turnDisplay.text = `${e.message} Retrying...`
+                self.loading = false;
+            }
         )
     }
 
@@ -166,7 +169,7 @@ export class WorldScene {
         ).then(
             data => {
                 if (data === null) {
-                    self.turnDisplay.text = "Error contacting server";
+                    self.turnDisplay.text = "Error contacting server. Retrying...";
                     self.loading = false;
                     return
                 }
@@ -179,7 +182,10 @@ export class WorldScene {
                 self.turnDisplay.text = `Picked up ${number} cards. Your turn!`;
             }
         ).catch(
-            e => self.turnDisplay.text = e.message
+            function(e) {
+                self.turnDisplay.text = `${e.message} Retrying...`
+                self.loading = false;
+            }
         )
     }
 
@@ -290,7 +296,7 @@ export class WorldScene {
         ).then(
             data => {
                 if (data === null) {
-                    self.turnDisplay.text = "Error contacting server";
+                    self.turnDisplay.text = "Error contacting server. Retrying...";
                     self.loading = false;
                     return
                 }
@@ -306,7 +312,10 @@ export class WorldScene {
                 self.game.setTimer(1000.0, self.syncWithServer, self);
             }
         ).catch(
-            e => self.turnDisplay.text = e.message
+            function(e) {
+                self.turnDisplay.text = `${e.message} Retrying...`
+                self.loading = false;
+            }
         )
     }
 
@@ -330,7 +339,7 @@ export class WorldScene {
         ).then(
             data => {
                 if (data === null) {
-                    self.turnDisplay.text = "Error contacting server";
+                    self.turnDisplay.text = "Error contacting server. Retrying...";
                     self.loading = false;
                     return
                 }
@@ -352,7 +361,10 @@ export class WorldScene {
                 }
             }
         ).catch(
-            e => self.turnDisplay.text = e.message
+            function(e) {
+                self.turnDisplay.text = `${e.message} Retrying...`
+                self.loading = false;
+            }
         )
     }
 
