@@ -42,7 +42,7 @@ export class WorldScene {
         this.hasPickedUp = false;
         this.skippedTurn = false;
         if (this.pile.length > 0) {this.pile[this.pile.length-1].wildcardSuit = wildcardSuit}
-        if (turn == 1 && this.odd_turns) {
+        if (turn == 1 && this.odd_turns || turn == 2) {
             let twosInPile = countTwos(this.pile);
             if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
             if (queenOfSpades(this.pile)) {this.pickupCards(this, 5, turn)}
@@ -82,7 +82,7 @@ export class WorldScene {
             }
             if (!option && this.hasPickedUp) {
                 this.turnDisplay.text = "You're forced to pass!";
-                this.emptyPile(this);
+                if (!this.skippedTurn) {this.emptyPile(this)}
                 this.endTurn(this);
                 this.turn++;
             }
