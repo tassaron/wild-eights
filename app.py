@@ -45,12 +45,8 @@ def new_room():
 
 def createDeck():
     """Returns a new deck of 52 cards in the format (suit, rank)"""
-    cards = list(range(1,53))
-    deck = []
-    for _ in range(52):
-       ch = random.choice(cards)
-       deck.append(ch)
-       cards.remove(ch)
+    deck = list(range(1,53))
+    random.shuffle(deck)
     for i, card in enumerate(deck[:]):
         if (card > 13 and card < 27):
             card -= 13
