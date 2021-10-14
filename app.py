@@ -72,10 +72,10 @@ def takeCards(deck, num, shuffleable):
     cards = []
     for _ in range(num):
         try:
-            ch = random.choice(deck)
+            ch = deck[num]
         except IndexError:
             random.shuffle(shuffleable)
-            deck = shuffleable
+            deck = shuffleable    
             shuffleable = []
             ch = random.choice(deck)
         cards.append(ch)
