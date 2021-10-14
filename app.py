@@ -4,76 +4,83 @@ import os
 from uuid import uuid4
 from string import ascii_uppercase
 from itsdangerous import URLSafeSerializer, BadSignature
+import sqlite3
+from ast import literal_eval
 
 
 app = flask.Flask(__name__)
 app.secret_key = os.urandom(16)
 serializer = URLSafeSerializer(app.secret_key)
-rooms = {}
 
 
-class GameRoom:
-    @classmethod
-    def new_room(cls):
-        rid = four_letter_code()
-        while rid in rooms.keys():
+def createDatabase():
+    connection = sqlite3.connect("wild-eights.db")
+    with connection:
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS rooms "
+            "(rid text PRIMARY KEY, uid1 text NOT NULL, uid2 text, turn integer DEFAULT 1,"
+            "pickedUp integer DEFAULT 0, pickedUpNum integer DEFAULT 0, wildcardSuit integer DEFAULT null,"
+            "pile text DEFAULT null, shuffleable text DEFAULT [], deck text DEFAULT null)")
+
+
+def connect():
+    connection = sqlite3.connect("wild-eights.db")
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+createDatabase()
+
+
+def new_room():
+    with connect() as db:
+        uid1 = uuid4().hex
+        while True:
             rid = four_letter_code()
-        return rid
+            result = db.execute("SELECT rid FROM rooms WHERE rid=(?)", [rid]).fetchone()
+            if result is None:
+                db.execute("INSERT INTO rooms(rid, uid1) VALUES (?, ?)", [rid, uid1])
+                return rid, uid1
 
-    def __init__(self):
-        self.rid = GameRoom.new_room()
-        self.uid1 = uuid4().hex
-        self.uid2 = None
-        self.turn = 1
-        self.pickedUp = 0
-        self.pickedUpNum = 0
-        self.wildcardSuit = None
-        # string repr of a list of tuples
-        self._pile = None
-        self.shuffleable = []
 
-    def createDeck(self):
-        self.deck = []
-        cards = list(range(1,53))
-        for _ in range(52):
-            ch = random.choice(cards)
-            self.deck.append(ch)
-            cards.remove(ch)
-        for i, card in enumerate(self.deck[:]):
-            if (card > 13 and card < 27):
-                card -= 13
-                self.deck[i] = (1, card)
-            elif (card > 26 and card < 40):
-                card -= 26
-                self.deck[i] = (2, card)
-            elif (card > 39):
-                card -= 39
-                self.deck[i] = (3, card)
-            else:
-                self.deck[i] = (0, card)
+def createDeck():
+    """Returns a new deck of 52 cards in the format (suit, rank)"""
+    cards = list(range(1,53))
+    deck = []
+    for _ in range(52):
+       ch = random.choice(cards)
+       deck.append(ch)
+       cards.remove(ch)
+    for i, card in enumerate(deck[:]):
+        if (card > 13 and card < 27):
+            card -= 13
+            deck[i] = (1, card)
+        elif (card > 26 and card < 40):
+            card -= 26
+            deck[i] = (2, card)
+        elif (card > 39):
+            card -= 39
+            deck[i] = (3, card)
+        else:
+            deck[i] = (0, card)
+    return deck
 
-    def takeCards(self, num):
-        returnval = []
-        for _ in range(num):
-            try:
-                ch = random.choice(self.deck)
-            except IndexError:
-                random.shuffle(self.shuffleable)
-                self.deck = self.shuffleable
-                self.shuffleable = []
-                ch = random.choice(self.deck)
-            returnval.append(ch)
-            self.deck.remove(ch)
-        return returnval
 
-    @property
-    def pile(self):
-        return self._pile
-
-    @pile.setter
-    def pile(self, val):
-        self.shuffleable.extend([] if self._pile is None else flask.json.loads(self._pile))
-        self._pile = val
+def takeCards(deck, num, shuffleable):
+    """Take num cards out of deck list and put into shuffleable list.
+    Returns remaining deck and shuffleable cards as two separate lists"""
+    cards = []
+    for _ in range(num):
+        try:
+            ch = random.choice(deck)
+        except IndexError:
+            random.shuffle(shuffleable)
+            deck = shuffleable
+            shuffleable = []
+            ch = random.choice(deck)
+        cards.append(ch)
+        deck.remove(ch)
+    return cards, deck, shuffleable
 
 
 def four_letter_code():
@@ -84,22 +91,32 @@ def four_letter_code():
 def newcard():
     data = flask.request.get_json()
     try:
-        room = rooms[data["rid"]]
-        number = int(data["number"])
-        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
-            flask.abort(401)
-    except (ValueError, KeyError):
+        with connect() as db:
+            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            if room is None:
+                flask.abort(404)
+            number = int(data["number"])
+            if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
+                flask.abort(401)
+            pickedUp = room["pickedUp"]
+            pickedUpNum = room["pickedUpNum"]
+            if number == 1:
+                # this property represents when singular cards are picked up voluntarily
+                if room["pickedUp"] == room["turn"]:
+                    pickedUpNum += 1
+                else:
+                    pickedUp = room["turn"]
+                    pickedUpNum = 1
+            cards, deck, shuffleable = takeCards(literal_eval(room["deck"]), number, literal_eval(room["shuffleable"]))
+            db.execute(
+                "UPDATE rooms SET deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?) WHERE rid=(?)",
+                [repr(deck), repr(shuffleable), pickedUp, pickedUpNum, room["rid"]]
+            )
+    except ValueError:
         flask.abort(400)
     except BadSignature:
         flask.abort(401)
-    if number == 1:
-        # this property represents when singular cards are picked up voluntarily
-        if room.pickedUp == room.turn:
-            room.pickedUpNum += 1
-        else:
-            room.pickedUp = room.turn
-            room.pickedUpNum = 1
-    return { "cards": room.takeCards(number) }, 200
+    return { "cards": cards }, 200
 
 
 @app.route("/lobby", methods=["POST"])
@@ -107,23 +124,30 @@ def refreshlobby():
     """Called by uid1 while waiting for uid2 to join the room"""
     data = flask.request.get_json()
     try:
-        room = rooms[data["rid"]]
-        if serializer.loads(data["uid"]) != room.uid1:
+        with connect() as db:
+            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            if room is None:
+                flask.abort(404)
+        if serializer.loads(data["uid"]) != room["uid1"]:
             flask.abort(401)
-        if room.uid2 is None:
+        if room["uid2"] is None:
             return { "uid": None }, 200
         else:
+            cards, deck, shuffleable = takeCards(literal_eval(room["deck"]), 8, literal_eval(room["shuffleable"]))
+            with connect() as db:
+                db.execute(
+                    "UPDATE rooms SET deck=(?),shuffleable=(?) WHERE rid=(?)",
+                    [repr(deck), repr(shuffleable), room["rid"]]
+                )
             return {
-                "uid": serializer.dumps(room.uid2),
-                "cards": room.takeCards(8),
-                "pile": room.pile,
-                "pickedUp": room.pickedUp == room.turn - 1,
-                "pickedUpNum": room.pickedUpNum,
-                "turn": room.turn,
-                "wildcardSuit": room.wildcardSuit,
+                "uid": serializer.dumps(room["uid2"]),
+                "cards": cards,
+                "pile": room["pile"],
+                "pickedUp": room["pickedUp"] == room["turn"] - 1,
+                "pickedUpNum": room["pickedUpNum"],
+                "turn": room["turn"],
+                "wildcardSuit": room["wildcardSuit"],
             }, 200
-    except KeyError:
-        flask.abort(400)
     except BadSignature:
         flask.abort(401)
 
@@ -132,20 +156,21 @@ def refreshlobby():
 def refreshgame():
     data = flask.request.get_json()
     try:
-        room = rooms[data["rid"]]
-        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
-            flask.abort(401)
-    except KeyError:
-        flask.abort(400)
+        with connect() as db:
+            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            if room is None:
+                flask.abort(404)
+            if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
+                flask.abort(401)
     except BadSignature:
         flask.abort(401)
     resp = {
-        "rid": room.rid,
-        "turn": room.turn,
-        "pile": room.pile,
-        "wildcardSuit": room.wildcardSuit,
-        "pickedUp": room.pickedUp == room.turn - 1,
-        "pickedUpNum": room.pickedUpNum
+        "rid": room["rid"],
+        "turn": room["turn"],
+        "pile": room["pile"],
+        "wildcardSuit": room["wildcardSuit"],
+        "pickedUp": room["pickedUp"] == room["turn"] - 1,
+        "pickedUpNum": room["pickedUpNum"]
     }
     return resp, 200
 
@@ -154,15 +179,25 @@ def refreshgame():
 def updategame():
     data = flask.request.get_json()
     try:
-        room = rooms[data["rid"]]
-        if serializer.loads(data["uid"]) not in (room.uid1, room.uid2):
-            flask.abort(401)
-        room.pile = data["pile"]
-        room.wildcardSuit = data["wildcardSuit"]
-        if room.pile[0][1] != 11:
-            room.turn += 1
-    except (KeyError, IndexError):
-        room.turn += 1
+        with connect() as db:
+            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            if room is None:
+                flask.abort(404)
+            if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
+                flask.abort(401)
+            oldpile = flask.json.loads(room["pile"])
+            shuffleable = literal_eval(room["shuffleable"])
+            shuffleable.extend(oldpile)
+            db.execute(
+                "UPDATE rooms SET shuffleable=(?),pile=(?),turn=(?),wildcardSuit=(?) WHERE rid=(?)",
+                [
+                    repr(shuffleable),
+                    data["pile"],
+                    room["turn"] + 1,
+                    data["wildcardSuit"],
+                    room["rid"]
+                ]
+            )
     except BadSignature:
         flask.abort(401)
     return {}, 200
@@ -170,50 +205,57 @@ def updategame():
 
 @app.route("/newroom")
 def newroom():
-    new_room = GameRoom()
+    rid, uid1 = new_room()
     response = flask.make_response(
         {
-            "rid": new_room.rid,
-            "uid1": serializer.dumps(new_room.uid1),
+            "rid": rid,
+            "uid1": serializer.dumps(uid1),
             "uid2": None,
         },
         200,
     )
-    rooms[new_room.rid] = new_room
     return response
 
 
 @app.route("/joinroom", methods=["POST"])
 def joinroom():
-    data = flask.request.get_json()
-    data = data[:4].upper()
-    for letter in data:
+    rid = flask.request.get_json()
+    rid = rid[:4].upper()
+    for letter in rid:
         if letter not in ascii_uppercase:
             flask.abort(400)
-    if data not in rooms.keys():
-        flask.abort(404)
-    rooms[data].uid2 = uuid4().hex
-    rooms[data].createDeck()
-    cards = rooms[data].takeCards(9)
-    firstcard = cards.pop()
-    if firstcard[1] == 2:
-        rooms[data].pickedUp = 1
-        rooms[data].pickedUpNum = 2
-    elif firstcard == (0, 12):
-        rooms[data].pickedUp = 1
-        rooms[data].pickedUpNum = 5
-    rooms[data].pile = flask.json.dumps([firstcard])
+    with connect() as db:
+        room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [rid]).fetchone()
+        if room is None:
+            flask.abort(404)
+        uid1 = room["uid1"]
+        uid2 = uuid4().hex
+        deck = createDeck()
+        cards, deck, shuffleable = takeCards(deck, 9, [])
+        firstcard = cards.pop()
+        pickedUp = 0
+        pickedUpNum = 0
+        if firstcard[1] == 2:
+            pickedUp = 1
+            pickedUpNum = 2
+        elif firstcard == (0, 12):
+            pickedUp = 1
+            pickedUpNum = 5
+        pile = flask.json.dumps([firstcard])
+        db.execute(
+            "UPDATE rooms SET uid2=(?),deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?),pile=(?),turn=1 WHERE rid=(?)",
+            [uid2, repr(deck), repr(shuffleable), pickedUp, pickedUpNum, pile, rid]
+        )
     response = flask.make_response(
         {
-            "rid": rooms[data].rid,
-            "uid1": serializer.dumps(rooms[data].uid1),
-            "uid2": serializer.dumps(rooms[data].uid2),
+            "rid": rid,
+            "uid1": serializer.dumps(uid1),
+            "uid2": serializer.dumps(uid2),
             "cards": cards,
-            "pile": rooms[data].pile,
+            "pile": pile,
         },
         200,
     )
-    rooms[data].turn = 1
     return response
 
 
