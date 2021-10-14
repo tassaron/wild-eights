@@ -78,7 +78,7 @@ export class LobbyScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
-                if (data === null || data["uid"] === null) {self.loading = false; return}
+                if (data === null || data["joined"] === false) {self.loading = false; return}
                 // uid2 has connected!!
                 self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
             }

@@ -75,7 +75,7 @@ def takeCards(deck, num, shuffleable):
             ch = deck[num]
         except IndexError:
             random.shuffle(shuffleable)
-            deck = shuffleable    
+            deck = shuffleable
             shuffleable = []
             ch = random.choice(deck)
         cards.append(ch)
@@ -131,7 +131,7 @@ def refreshlobby():
         if serializer.loads(data["uid"]) != room["uid1"]:
             flask.abort(401)
         if room["uid2"] is None:
-            return { "uid": None }, 200
+            return { "joined": False }, 200
         else:
             cards, deck, shuffleable = takeCards(literal_eval(room["deck"]), 8, literal_eval(room["shuffleable"]))
             with connect() as db:
@@ -140,7 +140,7 @@ def refreshlobby():
                     [repr(deck), repr(shuffleable), room["rid"]]
                 )
             return {
-                "uid": serializer.dumps(room["uid2"]),
+                "joined": True,
                 "cards": cards,
                 "pile": room["pile"],
                 "pickedUp": room["pickedUp"] == room["turn"] - 1,
@@ -249,7 +249,7 @@ def joinroom():
     response = flask.make_response(
         {
             "rid": rid,
-            "uid1": serializer.dumps(uid1),
+            "uid1": None,
             "uid2": serializer.dumps(uid2),
             "cards": cards,
             "pile": pile,

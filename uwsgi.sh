@@ -6,4 +6,4 @@ else
     port="$1"
 fi
 
-uwsgi --socket 0.0.0.0:$port --protocol=http -w app:app
+uwsgi --socket 0.0.0.0:$port --protocol=http -w app:app --master --workers 5
