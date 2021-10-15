@@ -14,21 +14,23 @@ export class WorldScene {
         this.uid = uid;
         this.rid = rid;
         this.turn = turn;
-        this.facedown = new Cardback(605, 305);
-        this.cards = cards.map(card => new Card(card[0], card[1], 605, 305));
+        this.facedown = new Cardback(600, 300);
+        this.cards = cards.map(card => new Card(card[0], card[1], 600, 300));
         pile = JSON.parse(pile);
         this.ocards = [];
-        for (let i = 0; i < (8 - (turn == 1 ? 0 : pile.length)); i++) {
-            this.ocards.push(new OCard(605, 305 + 135));
+        let numOcards = 8 - (turn == 1 ? 0 : pile.length);
+        for (let i = 0; i < numOcards; i++) {
+            this.ocards.push(new OCard(600, 300 + 135));
         }
         if (pickedUp) {
+            this.facedown.quantity -= pickedUpNum;
             for (let i = 0; i < pickedUpNum; i++) {
-                this.ocards.push(new OCard(605, 305 + 135))
+                this.ocards.push(new OCard(600, 300 + 135))
             }
         }
         this.pile = [];
         for (let arr of pile) {
-            this.pile.push(new Card(arr[0], arr[1], 305, 305));
+            this.pile.push(new Card(arr[0], arr[1], pilePos(), pilePos()));
         }
         this.underpile = [];
         this.adjustCardPos(this);
@@ -69,6 +71,12 @@ export class WorldScene {
             }
         }
         if (this.game.game_over) {return}
+
+        if (this.facedown.quantity < 1) {
+            this.facedown.quantity = this.facedown.offset
+            this.underpile = this.pile.length > 0 ? [] : [this.underpile[this.underpile.length-1]];
+        }
+
         if (this.isMyTurn()) {
             let option = false;
             for (let i=0; i < this.cards.length; i++) {
@@ -136,7 +144,8 @@ export class WorldScene {
                     return
                 }
                 self.turnDisplay.text = "Still your turn!";
-                self.cards.push(new Card(data["cards"][0][0], data["cards"][0][1], 605, 305));
+                self.facedown.quantity -= 1;
+                self.cards.push(new Card(data["cards"][0][0], data["cards"][0][1], 600, 300));
                 self.hasPickedUp = true;
                 self.adjustCardPos(self);
             }
@@ -173,8 +182,9 @@ export class WorldScene {
                     self.loading = false;
                     return
                 }
+                self.facedown.quantity -= number;
                 for (let card of data["cards"]) {
-                    self.cards.push(new Card(card[0], card[1], 605, 305));
+                    self.cards.push(new Card(card[0], card[1], 600, 300));
                 }
                 self.adjustCardPos(self);
                 self.turn = turn;
@@ -221,12 +231,14 @@ export class WorldScene {
             self.cards = self.cards.filter(othercard => othercard.rank != pcard.rank || othercard._suit != pcard._suit);            
         }
         let twosInPile = countTwos(self.pile) * 2;
+        self.facedown.quantity -= twosInPile;
         for (let i = 0; i < twosInPile; i++) {
-            self.ocards.push(new OCard(605, 305 + 135));
+            self.ocards.push(new OCard(600, 300 + 135));
         }
         if (queenOfSpades(self.pile)) {
+            self.facedown.quantity -= 5;
             for (let i = 0; i < 5; i++) {
-                self.ocards.push(new OCard(605, 305 + 135));
+                self.ocards.push(new OCard(600, 300 + 135));
             }
         }
         self.adjustCardPos(self);
@@ -258,9 +270,9 @@ export class WorldScene {
             self.ocards[i].x = 90 + (90 * i) - 720 * (Math.floor(i / 8));
             self.ocards[i].y = 135 + (65 * Math.floor(i / 8));
         }
-        for (let card of self.pile) {
-            card.x = 305;
-            card.y = 305;
+        for (let card of self.pile.filter(c => c.x < 285 || c.x > 305 || c.y < 285 || c.y > 305)) {
+            card.x = pilePos();
+            card.y = pilePos();
         }
     }
 
@@ -347,8 +359,9 @@ export class WorldScene {
                 let turn = data["turn"];
                 if (self.isMyTurn(turn) && self.turn != turn) {
                     if (data["pickedUp"]) {
+                        self.facedown.quantity -= data["pickedUpNum"];
                         for (let i = 0; i < data["pickedUpNum"]; i++) {
-                            self.ocards.push(new OCard(605, 305 + 135))
+                            self.ocards.push(new OCard(600, 300 + 135))
                         }
                         self.adjustCardPos(self);
                         self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile, data["wildcardSuit"])}, self);
@@ -458,4 +471,8 @@ function queenOfSpades(pile) {
         if (card.suit == 0 && card.rank == 12) {return true}
     }
     return false
+}
+
+function pilePos() {
+    return Math.floor(285 + (Math.random() * 20))
 }

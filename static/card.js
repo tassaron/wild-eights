@@ -58,8 +58,16 @@ export class Card extends CardBase{
 }
 
 export class Cardback extends CardBase {
+    constructor(x, y) {
+        super(x, y);
+        this.quantity = 35;
+        this.offset = this.quantity;
+    }
+
     draw(ctx, drawSprite) {
-        drawSprite.cardback(this.x, this.y);
+        for (let i = this.offset; i > this.offset - this.quantity; i -= 3) {
+            drawSprite.cardback(this.x + (i / 3), this.y + i);
+        }
     }
 }
 
