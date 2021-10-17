@@ -399,6 +399,11 @@ export class WorldScene {
             self.pile[self.pile.length-1].wildcardSuit = wildcardSuit;
         }
         self.adjustCardPos(self)
+        if (self.ocards.length == 0) {
+            self.game.changeScene(new GameOverScene(self.game, false));
+            self.turnDisplay.text = ":(";
+            return
+        }
         let twosInPile = countTwos(self.pile);
         if (twosInPile) {
             self.pickupCards(self, twosInPile*2, turn);
@@ -406,11 +411,6 @@ export class WorldScene {
         }
         if (queenOfSpades(self.pile)) {
             self.pickupCards(self, 5, turn)
-            return
-        }
-        if (self.ocards.length == 0) {
-            self.game.changeScene(new GameOverScene(self.game, false));
-            self.turnDisplay.text = ":(";
             return
         }
         self.turnDisplay.text = "It's your turn!";
