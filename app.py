@@ -6,6 +6,7 @@ from string import ascii_uppercase
 from itsdangerous import URLSafeSerializer, BadSignature
 import sqlite3
 from ast import literal_eval
+from time import time
 
 
 app = flask.Flask(__name__)
@@ -25,9 +26,11 @@ def createDatabase():
     with connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS rooms "
-            "(rowid INTEGER PRIMARY KEY, rid text NOT NULL, uid1 text NOT NULL, uid2 text, turn integer DEFAULT 1,"
-            "pickedUp integer DEFAULT 0, pickedUpNum integer DEFAULT 0, wildcardSuit integer DEFAULT null,"
-            "pile text DEFAULT null, shuffleable text DEFAULT [], deck text DEFAULT null)")
+            "(rowid INTEGER PRIMARY KEY AUTOINCREMENT, rid TEXT NOT NULL,"
+            "uid1 TEXT NOT NULL, uid2 TEXT, turn INTEGER DEFAULT 1,"
+            "pickedUp INTEGER DEFAULT 0, pickedUpNum INTEGER DEFAULT 0, wildcardSuit INTEGER,"
+            "pile TEXT, shuffleable TEXT DEFAULT [], deck TEXT,"
+            "time INTEGER NOT NULL)")
 
 
 def connect():
@@ -44,11 +47,14 @@ def newRoom():
         uid1 = uuid4().hex
         while True:
             rid = four_letter_code()
-            result = db.execute("SELECT rid FROM rooms WHERE rid=(?)", [rid]).fetchone()
+            result = db.execute("SELECT time, rowid FROM rooms WHERE rid=(?)", [rid]).fetchone()
             if result is None:
-                db.execute("INSERT INTO rooms(rid, uid1) VALUES (?, ?)", [rid, uid1])
+                db.execute("INSERT INTO rooms(rid, uid1, time) VALUES (?, ?, ?)", [rid, uid1, time()])
                 room = db.execute("SELECT rowid FROM rooms WHERE rid=(?)", [rid]).fetchone()
                 return rid, room["rowid"], uid1
+            else:
+                if time() - result["time"] > 10000:
+                    db.execute("DELETE FROM rooms WHERE rowid=(?)", [result["rowid"]])
 
 
 def createDeck():
@@ -192,12 +198,13 @@ def updategame():
             shuffleable = literal_eval(room["shuffleable"])
             shuffleable.extend(oldpile)
             db.execute(
-                "UPDATE rooms SET shuffleable=(?),pile=(?),turn=(?),wildcardSuit=(?) WHERE rowid=(?)",
+                "UPDATE rooms SET shuffleable=(?),pile=(?),turn=(?),wildcardSuit=(?),time=(?) WHERE rowid=(?)",
                 [
                     repr(shuffleable),
                     data["pile"],
                     room["turn"] + 1,
                     data["wildcardSuit"],
+                    time(),
                     room["rowid"]
                 ]
             )
