@@ -25,7 +25,7 @@ def createDatabase():
     with connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS rooms "
-            "(rid text PRIMARY KEY, uid1 text NOT NULL, uid2 text, turn integer DEFAULT 1,"
+            "(rowid INTEGER PRIMARY KEY, rid text NOT NULL, uid1 text NOT NULL, uid2 text, turn integer DEFAULT 1,"
             "pickedUp integer DEFAULT 0, pickedUpNum integer DEFAULT 0, wildcardSuit integer DEFAULT null,"
             "pile text DEFAULT null, shuffleable text DEFAULT [], deck text DEFAULT null)")
 
@@ -39,7 +39,7 @@ def connect():
 createDatabase()
 
 
-def new_room():
+def newRoom():
     with connect() as db:
         uid1 = uuid4().hex
         while True:
@@ -47,7 +47,8 @@ def new_room():
             result = db.execute("SELECT rid FROM rooms WHERE rid=(?)", [rid]).fetchone()
             if result is None:
                 db.execute("INSERT INTO rooms(rid, uid1) VALUES (?, ?)", [rid, uid1])
-                return rid, uid1
+                room = db.execute("SELECT rowid FROM rooms WHERE rid=(?)", [rid]).fetchone()
+                return rid, room["rowid"], uid1
 
 
 def createDeck():
@@ -95,7 +96,7 @@ def newcard():
     data = flask.request.get_json()
     try:
         with connect() as db:
-            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            room = db.execute("SELECT * FROM rooms WHERE rowid=(?)", [data["rid"]]).fetchone()
             if room is None:
                 flask.abort(404)
             number = int(data["number"])
@@ -112,8 +113,8 @@ def newcard():
                     pickedUpNum = 1
             cards, deck, shuffleable = takeCards(literal_eval(room["deck"]), number, literal_eval(room["shuffleable"]))
             db.execute(
-                "UPDATE rooms SET deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?) WHERE rid=(?)",
-                [repr(deck), repr(shuffleable), pickedUp, pickedUpNum, room["rid"]]
+                "UPDATE rooms SET deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?) WHERE rowid=(?)",
+                [repr(deck), repr(shuffleable), pickedUp, pickedUpNum, room["rowid"]]
             )
     except ValueError:
         flask.abort(400)
@@ -128,7 +129,7 @@ def refreshlobby():
     data = flask.request.get_json()
     try:
         with connect() as db:
-            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            room = db.execute("SELECT * FROM rooms WHERE rowid=(?)", [data["rid"]]).fetchone()
             if room is None:
                 flask.abort(404)
         if serializer.loads(data["uid"]) != room["uid1"]:
@@ -139,8 +140,8 @@ def refreshlobby():
             cards, deck, shuffleable = takeCards(literal_eval(room["deck"]), 8, literal_eval(room["shuffleable"]))
             with connect() as db:
                 db.execute(
-                    "UPDATE rooms SET deck=(?),shuffleable=(?) WHERE rid=(?)",
-                    [repr(deck), repr(shuffleable), room["rid"]]
+                    "UPDATE rooms SET deck=(?),shuffleable=(?) WHERE rowid=(?)",
+                    [repr(deck), repr(shuffleable), data["rid"]]
                 )
             return {
                 "joined": True,
@@ -160,7 +161,7 @@ def refreshgame():
     data = flask.request.get_json()
     try:
         with connect() as db:
-            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            room = db.execute("SELECT * FROM rooms WHERE rowid=(?)", [data["rid"]]).fetchone()
             if room is None:
                 flask.abort(404)
             if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
@@ -168,7 +169,6 @@ def refreshgame():
     except BadSignature:
         flask.abort(401)
     resp = {
-        "rid": room["rid"],
         "turn": room["turn"],
         "pile": room["pile"],
         "wildcardSuit": room["wildcardSuit"],
@@ -183,7 +183,7 @@ def updategame():
     data = flask.request.get_json()
     try:
         with connect() as db:
-            room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [data["rid"]]).fetchone()
+            room = db.execute("SELECT * FROM rooms WHERE rowid=(?)", [data["rid"]]).fetchone()
             if room is None:
                 flask.abort(404)
             if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
@@ -192,13 +192,13 @@ def updategame():
             shuffleable = literal_eval(room["shuffleable"])
             shuffleable.extend(oldpile)
             db.execute(
-                "UPDATE rooms SET shuffleable=(?),pile=(?),turn=(?),wildcardSuit=(?) WHERE rid=(?)",
+                "UPDATE rooms SET shuffleable=(?),pile=(?),turn=(?),wildcardSuit=(?) WHERE rowid=(?)",
                 [
                     repr(shuffleable),
                     data["pile"],
                     room["turn"] + 1,
                     data["wildcardSuit"],
-                    room["rid"]
+                    room["rowid"]
                 ]
             )
     except BadSignature:
@@ -208,10 +208,11 @@ def updategame():
 
 @app.route("/newroom")
 def newroom():
-    rid, uid1 = new_room()
+    rid, rowid, uid1 = newRoom()
     response = flask.make_response(
         {
             "rid": rid,
+            "rowid": rowid,
             "uid1": serializer.dumps(uid1),
             "uid2": None,
         },
@@ -228,10 +229,9 @@ def joinroom():
         if letter not in ascii_uppercase:
             flask.abort(400)
     with connect() as db:
-        room = db.execute("SELECT * FROM rooms WHERE rid=(?)", [rid]).fetchone()
+        room = db.execute("SELECT rowid FROM rooms WHERE rid=(?)", [rid]).fetchone()
         if room is None:
             flask.abort(404)
-        uid1 = room["uid1"]
         uid2 = uuid4().hex
         deck = createDeck()
         cards, deck, shuffleable = takeCards(deck, 9, [])
@@ -246,12 +246,13 @@ def joinroom():
             pickedUpNum = 5
         pile = flask.json.dumps([firstcard])
         db.execute(
-            "UPDATE rooms SET uid2=(?),deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?),pile=(?),turn=1 WHERE rid=(?)",
-            [uid2, repr(deck), repr(shuffleable), pickedUp, pickedUpNum, pile, rid]
+            "UPDATE rooms SET uid2=(?),deck=(?),shuffleable=(?),pickedUp=(?),pickedUpNum=(?),pile=(?),turn=1 WHERE rowid=(?)",
+            [uid2, repr(deck), repr(shuffleable), pickedUp, pickedUpNum, pile, room["rowid"]]
         )
     response = flask.make_response(
         {
             "rid": rid,
+            "rowid": room["rowid"],
             "uid1": None,
             "uid2": serializer.dumps(uid2),
             "cards": cards,

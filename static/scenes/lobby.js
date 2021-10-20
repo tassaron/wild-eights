@@ -9,6 +9,7 @@ export class LobbyScene {
         this.backbutton = new BackButton((game.ctx.canvas.width / 2) - 128, (game.ctx.canvas.height / 2) + 128);
         if (data === null) {return}
         this.rid = data["rid"];
+        this.rowid = data["rowid"];
         this.uid1 = data["uid1"];
         this.uid2 = data["uid2"];
         this.cards = data["cards"];
@@ -23,7 +24,7 @@ export class LobbyScene {
 
     update(ratio, keyboard, mouse) {
         if (this.uid2) {
-            this.game.changeScene(new WorldScene(this.game, this.rid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile, this.pickedUp, this.pickedUpNum));
+            this.game.changeScene(new WorldScene(this.game, this.rowid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile, this.pickedUp, this.pickedUpNum));
         } else if (this.uid1 && this.game.timer[0] == 0.0 && !this.loading) {
             this.game.setTimer(600.0, this.syncWithServer, this);
             this.loading = true;
@@ -66,7 +67,7 @@ export class LobbyScene {
                 method: "POST",
                 credentials: "same-origin",
                 body: JSON.stringify({
-                    "rid": self.rid,
+                    "rid": self.rowid,
                     "uid": self.uid1,
                 }),
                 cache: "no-cache",
@@ -80,7 +81,7 @@ export class LobbyScene {
             data => {
                 if (data === null || data["joined"] === false) {self.loading = false; return}
                 // uid2 has connected!!
-                self.game.changeScene(new WorldScene(self.game, self.rid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
+                self.game.changeScene(new WorldScene(self.game, self.rowid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
             }
         ).catch(
             e => self.goBack(self)
