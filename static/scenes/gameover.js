@@ -5,7 +5,6 @@ export class GameOverScene {
         this.game = game;
         this.win = win;
         game.game_over = true;
-        game.timer[1] = function(){};
         this.cooldown = 300.0;
     }
 
