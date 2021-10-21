@@ -235,7 +235,7 @@ export class WorldScene {
             }
         }
         self.adjustCardPos(self);
-        if (card.rank == 11) {
+        if (self.cards.length > 0 && card.rank == 11) {
             self.skippedTurn = true;
             self.hasPickedUp = false;
             self.turnDisplay.text = "Play again!";
