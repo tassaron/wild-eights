@@ -236,9 +236,11 @@ def joinroom():
         if letter not in ascii_uppercase:
             flask.abort(400)
     with connect() as db:
-        room = db.execute("SELECT rowid FROM rooms WHERE rid=(?)", [rid]).fetchone()
+        room = db.execute("SELECT rowid, uid2 FROM rooms WHERE rid=(?)", [rid]).fetchone()
         if room is None:
             flask.abort(404)
+        if room["uid2"] is not None:
+            flask.abort(401)
         uid2 = uuid4().hex
         deck = createDeck()
         cards, deck, shuffleable = takeCards(deck, 9, [])
