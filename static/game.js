@@ -8,7 +8,6 @@ export class Game {
         this.game_over = false;
         then = Date.now();
         this.ctx = ctx;
-        this.timer = [0.0, function(){}, this];
         this.scene = new MenuScene(this);
         this.prevScene = this.scene;
     }
@@ -17,24 +16,12 @@ export class Game {
         let now = Date.now();
         let delta = now - then;
         let ratio = fpsRatio(delta);
-        if (this.timer[0] > 0.0) {
-            this.timer[0] -= ratio;
-        } else if (this.timer[0] < 0.0) {
-            this.timer[0] = 0.0;
-            console.log("calling timer")
-            this.timer[1](this.timer[2]);
-        }
         this.scene.update(ratio, keyboard, mouse);
         then = Date.now();
     }
 
     draw(ctx, drawSprite) {
         this.scene.draw(ctx, drawSprite);
-    }
-
-    setTimer(frames, func, self) {
-        console.log("setting timer")
-        this.timer = [frames, func, self]
     }
 
     changeScene(scene) {

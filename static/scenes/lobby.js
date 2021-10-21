@@ -19,15 +19,14 @@ export class LobbyScene {
         // odd turns determines who plays on turns 1, 3, 5, etc.
         // uid2 will be the first to enter WorldScene so they go first
         this.odd_turns = data["uid2"] === null ? false : true;
-        this.loading = false;
+        if (this.uid2 === null) {
+            this.tid = setInterval(() => {this.syncWithServer(this)}, 5000);
+        }
     }
 
     update(ratio, keyboard, mouse) {
-        if (this.uid2) {
-            this.game.changeScene(new WorldScene(this.game, this.rowid, this.odd_turns, this.odd_turns ? this.uid2 : this.uid1, this.cards, this.pile, this.pickedUp, this.pickedUpNum));
-        } else if (this.uid1 && this.game.timer[0] == 0.0 && !this.loading) {
-            this.game.setTimer(600.0, this.syncWithServer, this);
-            this.loading = true;
+        if (this.uid2 != null) {
+            this.game.changeScene(new WorldScene(this.game, this.rowid, this.odd_turns, this.uid2, this.cards, this.pile, this.pickedUp, this.pickedUpNum));
         }
         this.backbutton.update(ratio, keyboard, mouse, this.goBack, this);
     }
@@ -79,12 +78,16 @@ export class LobbyScene {
             response => response.ok ? response.json() : null
         ).then(
             data => {
-                if (data === null || data["joined"] === false) {self.loading = false; return}
+                if (data === null || data["joined"] === false) {return}
+                clearInterval(self.tid);
                 // uid2 has connected!!
                 self.game.changeScene(new WorldScene(self.game, self.rowid, self.odd_turns, self.uid1, data["cards"], data["pile"], data["pickedUp"], data["pickedUpNum"], data["turn"], data["wildcardSuit"]));
             }
         ).catch(
-            e => self.goBack(self)
+            e => {
+                clearInterval(self.tid);
+                self.goBack(self);
+            }
         )
     }
 

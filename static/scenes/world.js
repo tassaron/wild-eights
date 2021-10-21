@@ -5,10 +5,11 @@ import { WildcardScene } from "./wildcard.js";
 import { GameOverScene } from "./gameover.js";
 
 const SERVER = "";
+const pollRate = 5000;
+const timerRate = pollRate / 100;
 
 export class WorldScene {
     constructor(game, rid, odd_turns, uid, cards, pile, pickedUp, pickedUpNum, turn=1, wildcardSuit=null) {
-        this.loading = false;
         this.turnDisplay = new TurnDisplay(game, game.ctx.canvas.width - 100, game.ctx.canvas.height - 100);
         this.odd_turns = odd_turns;
         this.uid = uid;
@@ -34,20 +35,18 @@ export class WorldScene {
         }
         this.underpile = [];
         this.adjustCardPos(this);
-        if (!this.odd_turns) {
-            if (turn == 2) {
-                this.turnDisplay.text = "It's your turn already!";
-            } else {
-                this.turnDisplay.text = "waiting for the other player...";
-            }
-        }
         this.hasPickedUp = false;
         this.skippedTurn = false;
         if (this.pile.length > 0) {this.pile[this.pile.length-1].wildcardSuit = wildcardSuit}
         if (turn == 1 && this.odd_turns || turn == 2) {
+            this.turnDisplay.text = "It's your turn already!";
             let twosInPile = countTwos(this.pile);
             if (twosInPile) {this.pickupCards(this, twosInPile*2, turn)}
             if (queenOfSpades(this.pile)) {this.pickupCards(this, 5, turn)}
+        } else {
+            this.turnDisplay.text = "waiting for the other player...";
+            this.tid = setInterval(() => {this.syncWithServer(this)}, pollRate);
+            this.ptid = setInterval(() => {this.turnDisplay.timer -= timerRate}, timerRate);
         }
     }
 
@@ -94,9 +93,6 @@ export class WorldScene {
                 this.endTurn(this);
                 this.turn++;
             }
-        } else if (this.game.timer[0] == 0.0 && this.loading == false) {
-            this.loading = true;
-            this.game.setTimer(600.0, this.syncWithServer, this);
         }
     }
 
@@ -140,7 +136,6 @@ export class WorldScene {
             data => {
                 if (data === null) {
                     self.turnDisplay.text = "Error contacting server. Retrying...";
-                    self.loading = false;
                     return
                 }
                 self.turnDisplay.text = "Still your turn!";
@@ -152,7 +147,6 @@ export class WorldScene {
         ).catch(
             function(e) {
                 self.turnDisplay.text = `${e.message} Retrying...`
-                self.loading = false;
             }
         )
     }
@@ -179,7 +173,6 @@ export class WorldScene {
             data => {
                 if (data === null) {
                     self.turnDisplay.text = "Error contacting server. Retrying...";
-                    self.loading = false;
                     return
                 }
                 self.facedown.quantity -= number;
@@ -188,13 +181,13 @@ export class WorldScene {
                 }
                 self.adjustCardPos(self);
                 self.turn = turn;
-                self.loading = false;
                 self.turnDisplay.text = `Picked up ${number} cards. Your turn!`;
+                self.tid = null;
+                self.ptid = null;
             }
         ).catch(
             function(e) {
                 self.turnDisplay.text = `${e.message} Retrying...`
-                self.loading = false;
             }
         )
     }
@@ -284,6 +277,7 @@ export class WorldScene {
     }
 
     endTurn(self) {
+        /* Occurs when the player's turn ends */
         let request = {
             "rid": self.rid,
             "uid": self.uid,
@@ -309,7 +303,6 @@ export class WorldScene {
             data => {
                 if (data === null) {
                     self.turnDisplay.text = "Error contacting server. Retrying...";
-                    self.loading = false;
                     return
                 }
                 for (let i = 1; i < self.pile.length-1; i++) {
@@ -321,17 +314,18 @@ export class WorldScene {
                     return
                 }
                 self.turnDisplay.text = "waiting for the other player...";
-                self.game.setTimer(1000.0, self.syncWithServer, self);
+                self.tid = setInterval(() => {this.syncWithServer(this)}, pollRate);
+                self.ptid = setInterval(() => {this.turnDisplay.timer -= timerRate}, timerRate);
             }
         ).catch(
             function(e) {
                 self.turnDisplay.text = `${e.message} Retrying...`
-                self.loading = false;
             }
         )
     }
 
     syncWithServer(self) {
+        self.turnDisplay.timer = pollRate;
         self.turnDisplay.text = "contacting server...";
         fetch(
             `${SERVER}/refresh`, {
@@ -352,31 +346,30 @@ export class WorldScene {
             data => {
                 if (data === null) {
                     self.turnDisplay.text = "Error contacting server. Retrying...";
-                    self.loading = false;
                     return
                 }
                 let new_pile = JSON.parse(data["pile"]);
                 let turn = data["turn"];
                 if (self.isMyTurn(turn) && self.turn != turn) {
+                    clearInterval(self.tid);
+                    clearInterval(self.ptid);
                     if (data["pickedUp"]) {
                         self.facedown.quantity -= data["pickedUpNum"];
                         for (let i = 0; i < data["pickedUpNum"]; i++) {
                             self.ocards.push(new OCard(600, 300 + 135))
                         }
                         self.adjustCardPos(self);
-                        self.game.setTimer(120.0, function(self) {self.startNextTurn(self, turn, new_pile, data["wildcardSuit"])}, self);
+                        setTimeout(() => {self.startNextTurn(self, turn, new_pile, data["wildcardSuit"])}, 1200);
                         return
                     }
                     self.startNextTurn(self, turn, new_pile, data["wildcardSuit"]);
                 } else {
                     self.turnDisplay.text = "waiting for the other player...";
-                    self.loading = false;
                 }
             }
         ).catch(
             function(e) {
                 self.turnDisplay.text = `${e.message} Retrying...`
-                self.loading = false;
             }
         )
     }
@@ -415,7 +408,6 @@ export class WorldScene {
         }
         self.turnDisplay.text = "It's your turn!";
         self.turn = turn;
-        self.loading = false;
     }
 
     legalMove(card) {
@@ -434,6 +426,7 @@ class TurnDisplay extends SpriteThing {
         super(x, y, 0, 0);
         this.text = "You play first!";
         this.game = game;
+        this.timer = 0;
     }
 
     draw(ctx, drawSprite) {
@@ -442,8 +435,8 @@ class TurnDisplay extends SpriteThing {
         ctx.fillRect((this.x - width) - 8, this.y - 24, width + 16, 32);
         ctx.fillStyle = "white";
         ctx.fillRect((this.x - width) - 6, this.y - 22, width + 12, 28);
-        ctx.fillStyle = `rgba(135, 206, 250, ${this.game.timer[0] <= 0.0 ? 0.0 : Math.min(1.0, 1.0 - (this.game.timer[0] / 600.0)) * 1.0})`;
-        ctx.fillRect((this.x - width) - 6, this.y - 22, this.game.timer[0] <= 0.0 ? 0 : Math.floor(Math.min(1.0, (this.game.timer[0] / 600.0)) * (width + 12)), 28);
+        ctx.fillStyle = `rgba(135, 206, 250, ${this.timer <= 0 ? 0 : Math.min(1.0, 1.0 - (this.timer / pollRate)) * 1.0})`;
+        ctx.fillRect((this.x - width) - 6, this.y - 22, this.timer <= 0 ? 0 : Math.floor(Math.min(1.0, (this.timer / pollRate)) * (width + 12)), 28);
         ctx.fillStyle = "black";
         ctx.font = "16pt Sans";
         ctx.fillText(this.text, this.x - width, this.y);
