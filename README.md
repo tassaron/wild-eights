@@ -1,4 +1,7 @@
 # Wild Eights
+
+[**Play Game**](https://fun.tassaron.com/wild-eights/)
+
 A 2-player card game using HTML5 canvas. There's a Flask API to create new rooms, join existing rooms, and poll for gamestate updates. In `/static` is what started as a copy of my [canvas-game](https://github.com/tassaron/canvas-game) template for the game itself.
 
 # How to Play
