@@ -25,7 +25,7 @@ The goal of the game is to empty your hand before your opponent.
 
 # Development
 1. Make a Python virtual environment.
-2. `pip install flask uwsgi`
+2. `pip install flask uwsgi python_dotenv`
 3. `./uwsgi.sh` for testing multiprocess, `flask run` if you want `print()` to work
 
 # Production

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 ROOT_DIR = os.environ.get("ROOT_DIR", "")
+INDEX_DISABLED = os.environ.get("INDEX_DISABLED", False)
 
 
 class MyFlask(flask.Flask):
@@ -282,6 +283,7 @@ def joinroom():
     return response
 
 
-@app.route("/")
-def index():
-    return flask.render_template("index.html")
+if not INDEX_DISABLED:
+    @app.route("/")
+    def index():
+        return flask.render_template("index.html")
