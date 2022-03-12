@@ -1,6 +1,6 @@
 # Wild Eights
 
-[**Play Game**](https://rainey.tech/game/wild-eights/)
+[**Play Game**](https://rainey.tech/game/wild-eights)
 
 A 2-player card game using HTML5 canvas. There's a Flask API to create new rooms, join existing rooms, and poll for gamestate updates. In `/static` is what started as a copy of my [canvas-game](https://github.com/tassaron/canvas-game) template for the game itself.
 
@@ -24,14 +24,17 @@ The goal of the game is to empty your hand before your opponent.
 * python_dotenv
 
 # Development
+1. Install dependencies needed to compile uWSGI: `apt install build-essential gcc python3-dev`
 1. Make a Python virtual environment.
-2. `pip install flask uwsgi python_dotenv`
-3. `./uwsgi.sh` for testing multiprocess, `flask run` if you want `print()` to work
+1. `pip install flask uwsgi python_dotenv`
+1. `./uwsgi.sh` for testing multiprocess, `flask run` if you want `print()` to work
 
 # Production
+1. Do first 3 development steps.
+1. Make user for the app `adduser --system --home /srv/website website`
 1. Copy `app.service` into `/etc/systemd/system/`
-2. The systemd service will run `uwsgi --ini uwsgi.ini`
-3. Edit `website.nginx` as needed. Certbot can create HTTPS config automatically
+    - This systemd service will run `uwsgi --ini uwsgi.ini`
+1. Edit `website.nginx` as needed. Certbot can create HTTPS config automatically
 
 # Graphics Attribution
 * The card graphics, `/static/assets/cards.png` are in the public domain. They were created by GreyWyvern.
