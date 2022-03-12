@@ -7,9 +7,19 @@ from itsdangerous import URLSafeSerializer, BadSignature
 import sqlite3
 from ast import literal_eval
 from time import time
+from dotenv import load_dotenv
 
 
-app = flask.Flask(__name__)
+load_dotenv()
+ROOT_DIR = os.environ.get("ROOT_DIR", "")
+
+
+class MyFlask(flask.Flask):
+    def add_url_rule(self, rule, *args, **kwargs):
+        return super().add_url_rule(ROOT_DIR + rule, *args, **kwargs)
+
+
+app = MyFlask(__name__)
 try:
     with open("key.sav", "rb") as f:
         key = f.read(16)

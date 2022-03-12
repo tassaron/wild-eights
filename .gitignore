@@ -7,3 +7,4 @@ env/
 *.sav
 *.egg-info
 *.db
+.env

@@ -84,12 +84,14 @@ function preload_success() {
     }
 }
 
+//const PREFIX = "/static/client/rainey_arcade/js/assets/"
+const PREFIX = "/static/assets/"
 sprites.cards.addEventListener("load", preload_success)
-sprites.cards.src = "static/assets/cards.png";
+sprites.cards.src = PREFIX + "cards.png";
 sprites.suits.addEventListener("load", preload_success)
-sprites.suits.src = "static/assets/suits.png";
+sprites.suits.src = PREFIX + "suits.png";
 sprites.help.addEventListener("load", preload_success)
-sprites.help.src = "static/assets/help.png";
+sprites.help.src = PREFIX + "help.png";
 
 function loop() {
     game.update(keyboard, mouse);
