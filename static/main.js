@@ -6,7 +6,7 @@ import { Game } from "./game.js";
 */
 const gamediv = document.getElementById("game");
 const canvas = document.createElement("canvas");
-gamediv.setAttribute("style", "background: url('/static/assets/wood.png')");
+gamediv.setAttribute("style", "background: url('/static/assets/wood.png'); width: 900px; height: 900px; margin: auto; border: 2px solid black;");
 gamediv.appendChild(canvas);
 canvas.width = gamediv.offsetWidth; canvas.height = gamediv.offsetHeight;
 const ctx = canvas.getContext("2d");
@@ -84,7 +84,7 @@ function preload_success() {
     }
 }
 
-//const PREFIX = "/static/client/rainey_arcade/js/assets/"
+//const PREFIX = "/static/client/rainey_arcade/js/wild-eights/assets/"
 const PREFIX = "/static/assets/"
 sprites.cards.addEventListener("load", preload_success)
 sprites.cards.src = PREFIX + "cards.png";
