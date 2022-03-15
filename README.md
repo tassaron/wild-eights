@@ -24,6 +24,7 @@ The goal of the game is to empty your hand before your opponent.
 * python_dotenv
 
 # Development
+1. See [API documentation](API.md)
 1. Install dependencies needed to compile uWSGI: `apt install build-essential gcc python3-dev`
 1. Make a Python virtual environment.
 1. `pip install flask uwsgi python_dotenv`
