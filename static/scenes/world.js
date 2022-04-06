@@ -341,13 +341,19 @@ export class WorldScene {
                 })
             }
         ).then(
-            response => response.ok ? response.json() : null
+            response => response.status == 204 ? true : response.ok ? response.json() : false
         ).then(
             data => {
-                if (data === null) {
+                if (data === true) {
+                    // timing glitch to be ignored (204 status code)
+                    return
+                } else if (data === false) {
+                    // non-200 status
                     self.turnDisplay.text = "Error contacting server. Retrying...";
                     return
                 }
+
+                // data is json
                 let new_pile = JSON.parse(data["pile"]);
                 let turn = data["turn"];
                 if (self.isMyTurn(turn) && self.turn != turn) {

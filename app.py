@@ -38,7 +38,7 @@ def createDatabase():
         connection.execute(
             "CREATE TABLE IF NOT EXISTS rooms "
             "(rowid INTEGER PRIMARY KEY AUTOINCREMENT, rid TEXT NOT NULL,"
-            "uid1 TEXT NOT NULL, uid2 TEXT, turn INTEGER DEFAULT 1,"
+            "uid1 TEXT NOT NULL, uid2 TEXT, turn INTEGER DEFAULT 1, lastRefreshTurn INTEGER DEFAULT 1,"
             "pickedUp INTEGER DEFAULT 0, pickedUpNum INTEGER DEFAULT 0, wildcardSuit INTEGER,"
             "pile TEXT, shuffleable TEXT DEFAULT [], deck TEXT,"
             "time INTEGER NOT NULL)")
@@ -183,8 +183,21 @@ def refreshgame():
                 flask.abort(404)
             if serializer.loads(data["uid"]) not in (room["uid1"], room["uid2"]):
                 flask.abort(401)
+            if room["lastRefreshTurn"] != room["turn"]:
+                # first time this turn has been "refreshed"
+                db.execute(
+                    "UPDATE rooms SET lastRefreshTurn=(?),time=(?) WHERE rowid=(?)", [
+                        room["turn"],
+                        time(),
+                        data["rid"],
+                    ]
+                )
     except BadSignature:
         flask.abort(401)
+
+    if room["lastRefreshTurn"] == room["turn"]:
+        return "", 204
+
     resp = {
         "turn": room["turn"],
         "pile": room["pile"],
